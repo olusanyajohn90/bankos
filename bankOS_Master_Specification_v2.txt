@@ -1,0 +1,440 @@
+
+bankOS
+Master Product Specification & AI Rebuild Prompt
+Multi-tenant Core Banking & Lending SaaS — Nigeria / Africa
+Version 2.0  ·  March 2026  ·  Derived from 64 live staging screenshots + Grok feature list
+
+This document is the complete authoritative specification for bankOS. It was compiled from:
+• 64 annotated screenshots captured from the live LendCore staging environment (app-staging.lendcoretech.com)
+• A structured feature requirements table covering 16 sections and 55+ line items generated via Grok
+• 2026 regulatory requirements: CBN MFB guidelines, FCCPC Digital Lending Regulations, NDPR, IFRS 9 ECL
+
+The document is structured so each section can be handed directly to an AI coding tool (v0.dev, Cursor, Claude) or a development team as a self-contained specification. Section 21 contains the complete ready-to-paste AI rebuild prompt.
+
+1.  Project Overview
+Product IdentityNamebankOSFormerlyLendCore (rebranded)TaglineModern banking & lending infrastructure for AfricaSub-headingThe operating system for microfinance banks, digital lenders, and co-operative societiesValue PropositionOriginate, assess, disburse, and collect — all from one platformTarget Segments1) Small cooperatives (low-cost group lending)  2) Licensed MFBs (full CBN compliance)  3) Digital lenders (high-velocity micro-lending)Primary MarketNigeria; extensible to wider AfricaRegulatory FrameCBN MFB guidelines · FCCPC Digital Lending Regs 2025 · NDPR · IFRS 9 ECLPrimary CurrencyNGN; also USD, GBP, EUR, CAD, CNYArchitectureMulti-tenant SaaS — one Super Admin instance manages many Tenant institutionsBrandingPrimary colour: blue. Font: Inter/sans-serif. Logo: square blue grid/house glyph
+2.  Technology Stack
+BackendFrameworkLaravel (latest stable) with multi-tenancy via tenant_id scoping (or hyn/multi-tenant package)LanguagePHP 8.3+DatabaseMySQL — relational tables, UUIDs where appropriate, all queries tenant-scopedQueueLaravel Queue workers (Redis or database driver) for async jobsSchedulerLaravel Task Scheduler (cron) for all 9 background jobsAPILaravel Sanctum for token-based API auth; REST JSON API
+FrontendTemplatesLaravel Blade + Tailwind CSS v3 + Alpine.js (or Vue.js for complex components)IconsLucide (SVG icon set)ChartsChart.js or Recharts (via CDN in Blade) for dashboard widgetsThemeLight / Dark / System toggle. Blue base colour palette with Crimson, Indigo, Purple variantsMobile AppReact Native (iOS + Android) consuming the Laravel Sanctum API
+Auth & SecurityAuthenticationLaravel Breeze or Fortify — Institution Code + Email + PasswordSession / APILaravel Sanctum (web session + API tokens)AuthorisationSpatie Laravel Permission (RBAC — roles & permissions per tenant)2FASMS OTP or Authenticator App (TOTP). Device binding. Session timeout configurablePassword PolicyMinimum 8 chars, auto-generated on user invite, forced change on first login
+InfrastructureCDN / SecurityCloudflare (WAF + proxy + Web Analytics)Workflow EngineCamunda BPM (loan approval, KYC, user approval workflows)NotificationsSMS (Termii/Africa's Talking), WhatsApp (Twilio/Meta), Email (SendGrid/Mailgun), Push (FCM)FX RatesExternal FX API (scheduled daily at 06:00)Credit BureauCRC / XDS / FirstCentral API integration (pull & push)BVN/NINNIBSS API for identity verification
+3.  User Roles & Access Control
+All roles are scoped per tenant via Spatie Permission. Super Admin operates across all tenants.
+
+IDRequirementPrioritySegment3.1Super Admin — Manage tenants, global settings, audit logs, scheduled jobs, exchange rates, system-wide reportsHighAll3.2Compliance Officer — Must exist before any other role is created per tenant. KYC review, workflow approvals, regulatory reportsHighMFBs + Coops3.3Tenant Admin (Bank Admin) — Manage institution users, branches, products, reports, GL. Created automatically on tenant setupHighAll3.4Loan Officer — Loan origination, pre-qualification, disbursement, customer managementHighAll3.5Teller — Cash deposits, withdrawals, inbound transfer posting, daily balancingMediumMFBs + Coops3.6Agent — Field collections, account opening, loan repayments via POS. Has float wallet and GPS check-inHighCoops + MFBs3.7Auditor — Read-only access to audit logs, reports, GL. Cannot create or modify any recordMediumAll
+4.  Authentication & Onboarding
+4.1  Login Page (/login)
+Split-screen layout: left marketing panel, right login card. Background: light grey with floating blue/? decorative elements.
+• Left panel: Large heading 'Modern banking & lending infrastructure for Africa', sub-paragraph, 3 feature bullets (CBN/NIBSS compliance, AI credit assessment, real-time dashboards), bottom tag strip (Compliance | AI Credit | Dashboards)
+• Right card heading: 'Welcome back — Sign in to your account to continue'
+• Fields: Institution Code (placeholder 'e.g. firstbank'), Email address, Password (show/hide toggle)
+• Controls: Remember me checkbox, Forgot password? link
+• CTA: Sign in (full-width blue button)
+• Footer: 'Don't have an account? Contact your admin'
+• 2FA: After primary auth, prompt for OTP (SMS or TOTP) if enabled on the account
+4.2  New Tenant Wizard (/tenants/new)
+Three-section form (scrollable page, not modal):
+• Basic Information: Institution Name*, Tenant Type* (Bank/Lender/Cooperative), Short Name* (unique slug), Domain (bank.example.com), Account Prefix* (3 digits, e.g. 100), Primary Currency (NGN), Supported Currencies comma-separated (default: NGN, USD, GBP), Contact Email, Contact Phone, Address, Logo URL
+• Default Administrator: Admin Email*, First Name*, Last Name*. Helper: 'A BANK_ADMIN user will be created with a temporary password. They must change it on first login.'
+• Regulatory & Compliance: CBN License Number, NIBSS Institution Code, Routing Number
+• CTA: Create Tenant (full-width blue button)
+• On creation: GL accounts auto-provisioned from standard Nigerian Chart of Accounts
+4.3  New User Form (/users/new)
+• Warning banner (amber): Compliance Officer must be created before any other role can be assigned
+• Fields: First Name*, Last Name*, Email*, Phone, Role* (dropdown — only Compliance Officer available until CO exists), Branch ID optional (UUID), Password optional (auto-generated if empty)
+• CTA: Submit for Approval (full-width blue) — triggers maker-checker workflow
+• On approval: user receives welcome email with login credentials
+
+5.  Dashboard (/dashboard)
+5.1  KPI Cards
+Two rows of 5 cards each. Each card: label, large bold value, coloured Lucide icon top-right. White surface, rounded corners, subtle border.
+KPI Card DefinitionsTotal CustomersInteger count. Icon: Users (blue)Total AccountsInteger count. Icon: CreditCard (blue)Total Deposits? sum. Icon: ArrowDownCircle (blue)Total Withdrawals? sum. Icon: ArrowUpCircle (red/orange)Active LoansInteger count. Icon: Building2 (blue)Total Savings? sum. Icon: PiggyBank (blue)Accrued Interest? sum. Icon: Percent (blue)Interest Posted? sum. Icon: TrendingUp (blue)Pending TransactionsInteger count. Icon: Clock (amber)Pending KYCInteger count. Icon: FileText (blue)
+5.2  Charts
+• Transaction Volume — 30-day line/area chart. Series: Deposits (blue), Withdrawals (red), Transfers (blue). Legend below. Width ~60% content area.
+• Loan Portfolio by Status — donut chart. Segments: PENDING / ACTIVE / OVERDUE / CLOSED / WRITTEN_OFF. Legend right. Width ~40%.
+• Account Distribution — full-width bar chart. Two series per account type: Count (blue) + Total Balance (blue). X-axis: account types.
+• PAR Aging Widget (NEW) — stacked bar or table showing Portfolio at Risk by bucket: 1-30 days / 31-60 / 61-90 / 90+ days. Shows count and ? value per bucket.
+
+6.  Customers Module
+6.1  Customer List (/customers)
+• Title: 'Customers', subtitle: 'Manage customer records'
+• Top right: '+ New Customer' button (blue)
+• Controls: Search (by name/email/number), All Types dropdown filter, Export button
+Customers Table ColumnsCustomer #Auto-generated customer referenceNameFull nameTypeIndividual / CorporatePhonePhone numberStatusBadge: ACTIVE / INACTIVE / PENDING / SUSPENDEDCreatedDate created(row action)View icon ? customer detail page6.2  New Customer Wizard — 3 Steps
+Step 1: Identity Verification
+• Customer Type dropdown: Individual / Corporate
+• BVN field (11-digit) + Validate button ? success returns: photo, full name, DOB, gender, phone. Shows blue verified card.
+• NIN field (11-digit) + Validate button ? similar return
+• Validation: at least one of BVN or NIN required
+• 'Next ?' (blue, right-aligned)
+Step 2: Personal Details & Documents
+• Personal Details (pre-filled from BVN where available): First Name*, Middle Name, Last Name*, DOB*, Gender* (dropdown), Email*, Phone*, Occupation (combobox), Marital Status, Street Address, Nationality, State, City/LGA, Postal Code
+• Reference: BVN/NIN address shown in grey below address fields
+• Photo ID Document: ID Type* (dropdown), ID Number*, file upload (max 5 MB, image or PDF)
+• Address Verification: file upload (max 5 MB, accepts Utility Bill or Bank Statement)
+• Back / Next ?
+Step 3: Review & Submit
+• Customer Information summary (name, DOB, gender, email, phone, address)
+• Identity Verification status: BVN Verified / NIN Verified badges
+• Documents status: ID Doc and Address Proof upload status
+• KYC Assessment: KYC Tier badge (LEVEL 1/2/3), Workflow badge (Auto-approved in blue / Manual review in amber)
+• 'What happens next' section based on tier/workflow
+• Back / Submit buttons. Submit triggers auto-approval or KYC review queue.
+6.3  KYC Review Queue (/kyc)
+KYC Review TableCustomerName + linkDocument TypeNIN / Passport / Driver's License / Utility BillDocument #ID numberFileThumbnail / download linkStatusPENDING / APPROVED / REJECTED / EXPIREDExpiryDocument expiry dateUploadedUpload datetimeActionsApprove / Reject / Request More Info buttons
+7.  Accounts & Savings Module
+7.1  Accounts List (/accounts)
+• Title: 'Accounts'. Top right: '+ New Account'.
+• Filters: All Types, All Statuses. Export.
+Accounts Table ColumnsAccount #Account numberAccount NameDisplay nameTypeSavings / Current / LoanCurrencyNGN / USD / GBP / EURAvailable Balance? formattedLedger Balance? formattedStatusACTIVE / DORMANT / CLOSED
+7.2  Open Account Form (/accounts/new)
+• Customer: searchable combobox
+• Account Details: Type (Savings default), Name, Currency (NGN default), Account Number (optional, auto-generate)
+• Savings Product: dropdown, Initial Deposit, Target Amount (optional)
+• 'Open Account' button (full-width blue)
+7.3  Savings Products (/savings/products)
+• List with '+ New Product' button
+Savings Product FieldsProduct Name / CodeDisplay name and short code (e.g. SAV-PREM)Description / CurrencyText description, NGN defaultInterest Rate / FrequencyAnnual %, posting frequency (Monthly/Quarterly/Annually)Min Balance / Min Opening? thresholdsWithdrawal RulesMax withdrawal/day, max withdrawals/monthLock-in PeriodDays before early withdrawal is penalisedEarly Withdrawal Penalty% fee charged on early withdrawalMonthly Maintenance Fee? flat fee per monthMin Balance Penalty? fee when balance falls below minimumProduct TypeStandard Savings / Goal-based / Fixed Deposit (NEW)Goal Target / Maturity DateFor goal-based and fixed deposit products (NEW)
+7.4  Goal-based Savings & Fixed Deposits (NEW)
+• Goal-based: customer sets target amount and target date. Progress bar shown on account page. Partial withdrawals blocked until goal met (configurable).
+• Fixed Deposit: customer locks a sum for a fixed tenure at a guaranteed rate. Maturity date calculated. Early exit triggers penalty. Auto-renewal option.
+7.5  Internal Wallet (NEW)
+• Every customer has a system wallet (NGN) separate from bank accounts
+• Wallet can be funded via card, bank transfer, USSD, or agent
+• Wallet balance usable for loan repayments, savings top-ups, inter-customer transfers
+• Wallet transaction log: funding, debit, transfer, fee events
+
+8.  Transactions & Collections
+8.1  Transactions List (/transactions)
+• Title: 'Transactions'. Top right: '+ New Transaction'. Filters: All Types, All Statuses. Export.
+Transactions Table ColumnsReferenceTransaction referenceTypeDeposit / Withdrawal / Transfer / Repayment / DisbursementAmount? formattedDescriptionNarrationStatusPENDING / SUCCESS / FAILED / REVERSEDDateDateTime
+8.2  New Transaction Form (/transactions/new)
+• Tab 1 — Deposit: Account ID, Amount, Currency, Description ? 'Process Deposit'
+• Tab 2 — Withdrawal: Account ID, Amount, Currency, Description ? 'Process Withdrawal'
+• Tab 3 — Transfer: Source Account ID, Destination Account ID, Amount, Currency, Description ? 'Process Transfer'
+8.3  Inbound Transfers (/inbound-transfers)
+• Read-only list from NIBSS/payment switch webhooks
+Inbound Transfers ColumnsSession IDNIBSS/switch session IDSenderSender nameAccountDestination account numberAmount? formattedChannelBRANCH / MOBILE / POS / INTERNET_BANKINGStatusPENDING / POSTED / FAILEDSourcePayment switch sourcePosting TypeManual / AutoNarrationPayment descriptionReceivedDatetime receivedPostedDatetime posted
+8.4  Posting Files (/posting-files)
+• Upload CSV/Excel. Drag-and-drop zone + Upload & Validate + Download Template buttons
+• Required columns: identifier_type (BVN/NIN/LOAN_ACCOUNT_NUMBER), identifier_value, amount, transaction_date
+• Optional: payment_channel, narration
+• Duplicate detection on re-upload. Supports tens of thousands of records.
+• Table: Reference, File Name, Type, Status, Records, Amount, Uploaded By, Date
+8.5  Notifications Engine (NEW)
+• Channels: SMS (Termii/Africa's Talking), WhatsApp (Twilio/Meta API), Email (SendGrid/Mailgun), Push (Firebase FCM)
+• Trigger events: loan disbursed, repayment received, repayment overdue, KYC approved/rejected, account opened, OTP, password reset
+• Per-tenant notification templates (customisable message body)
+• Notification log table: channel, recipient, event, status, sent_at
+• Customer opt-in/opt-out per channel stored on customer record
+8.6  Real-time Repayment Channels (NEW)
+• Card: Paystack/Flutterwave card charge API. Auto-posts to loan account.
+• Mobile Money: Integration with MTN MoMo / Airtel Money / OPay API
+• USSD: USSD menu repayment flow (*944# or custom shortcode). Triggered via payment processor.
+• Agent POS: Agent scans QR or enters loan ref + amount on POS device. Posted via agent API.
+• Direct Debit: NIBSS eMandates. Mandate setup on loan origination. Auto-debit on due date.
+• All channels post to same Inbound Transfers queue with channel tag for reconciliation.
+
+9.  Loans Module
+9.1  Loans List (/loans)
+• Title: 'Loans'. Top right: '+ New Loan' + 'Products' buttons. Filters: status, type, date range. Export.
+Loans Table ColumnsLoan #Auto-generated loan referenceCustomerBorrower nameProductLoan product namePrincipal? formattedBalance? outstandingRateAnnual interest rate %StatusPENDING / ACTIVE / OVERDUE / CLOSED / WRITTEN_OFFCreatedApplication date
+9.2  New Loan Application (/loans/new)
+• Two-column layout: left form + right Pre-Qualification panel
+• Left — Customer: searchable combobox
+• Left — Loan Details: Loan Product, Principal Amount, Tenure (days), Purpose, Source Channel (Web Portal / Mobile / Branch / USSD / Agent)
+• Left — Loan Account: select from customer's existing accounts (or auto-create)
+• Left — Collateral (if product requires): Description textarea, Value (?)
+• Right — Pre-Qualification: checks KYC status, age ? 18, BVN verified, within loan limits, DTI ? product max, no existing overdue. Shows pass/fail per check. 'Run Pre-Qualification' button.
+• Right — AI Credit Score: displayed after pre-qual. Score 1-100, band (Excellent/Good/Fair/Poor), approval recommendation.
+• CTA: Submit Application (blue) ? enters approval workflow
+9.3  Loan Products (/loans/products)
+Loan Product Configuration FieldsName / CodeDisplay name + short code (e.g. PL-001)Description / CurrencyText, NGN defaultInterest RateAnnual % (e.g. 24.0)Interest MethodReducing Balance / FlatAmortizationEqual Installment / Bullet / BalloonMin / Max Amount? loan size limitsMin / Max TenureDaysMax DTI RatioDecimal (e.g. 0.40 = 40%)Processing Fee% of principalInsurance Fee% of principalGrace PeriodDays after due date before penalty kicks inGroup LendingEnable group/joint-liability flagAI AssessmentRequire AI credit score before approval (configurable thresholds)Early RepaymentAllow/forbid + penalty %Collateral TypesMulti-select: Land Title, Vehicle, Movable Asset, Cash Deposit, Guarantor, None
+9.4  Loan Restructuring & Moratorium (NEW)
+• Accessible from loan detail page ? 'Restructure' action button
+• Options: Extend Tenure (add days), Reduce Rate (temporarily), Grant Grace Period (days), Partial Write-off (? amount + reason), Full Write-off
+• All restructuring actions require L2/L3 approval via workflow
+• Audit trail: who approved, amount affected, old vs new terms
+• Moratorium: freeze repayment schedule for a defined period (e.g. flood relief). Interest may or may not continue accruing (product-configurable).
+9.5  Group / Centre / Meeting Management (NEW)
+• Group: named group of borrowers (e.g. 5-30 members). Assigned to a Loan Officer and Branch.
+• Centre: umbrella for multiple groups (used in Grameen-style MFBs). Has meeting day/time/location.
+• Meeting: scheduled meeting with attendance register, collection amounts recorded per member.
+• Group Loan: single disbursement disbursed equally or in varying amounts to group members. Repayment collected at meetings.
+• Solidarity guarantee: any group member can be held liable for another's default (configurable per product).
+• Group dashboard: total exposure, PAR, attendance rate, next meeting date.
+
+10.  Operations
+10.1  Workflows (/workflows)
+• Tab 1: My Tasks — tasks assigned to current user. Badge count.
+• Tab 2: Available Tasks — tasks in queue claimable by current user's role.
+• 'View Instances' ? /workflows/instances: table with Process, Business Key, Status, Started, Ended.
+• Workflow types: User Approval, Loan Approval (L1/L2/L3 based on amount), KYC Review, Restructuring Approval, Write-off Approval.
+10.2  KYC Review (/kyc)
+See Section 6.3 for column definitions. Actions: Approve / Reject / Request More Info.
+10.3  Reports (/reports)
+Hub page: report cards in a grid. Each card has icon, title, description, 'View Report ?' link.
+Available ReportsAccount StatementTransaction history for a specific account. Fields: Account Number, Start Date, End Date.Trial BalanceGL debits and credits. CoA Code, Account Name, Category, Debit, Credit. 'Balanced' badge.Loan PortfolioPortfolio distribution donut + summary table (Status, Count, ? Amount, % of Portfolio).Interest AccrualKPI cards: Total Accrued, Total Posted, Accounts with Pending Interest. Export.PAR & Aging (NEW)Portfolio at Risk buckets: 1-30 / 31-60 / 61-90 / 90+ days overdue. Count + ? + % of book per bucket.IFRS 9 ECL (NEW)Expected Credit Loss by stage (Stage 1/2/3). ECL provision amount, coverage ratio, movement schedule.
+11.  Administration
+11.1  Branches (/branches)
+• Table: Branch, Branch Code, Location, Phone, Email, Manager, Status, Created.
+• '+ New Branch' ? modal: Name*, Code*, Branch Code*, Sort Code, Routing Number, Phone, Email, Address (Street, City, State). Cancel / Create.
+11.2  GL Accounts (/gl-accounts)
+• Subtitle: 'Chart of Accounts — hierarchical view of all General Ledger accounts'
+• Filter: All Levels dropdown. Table: Account, Account #, Category, Level, Balance, Branch/Teller.
+• Auto-provisioned from standard Nigerian CoA on tenant creation.
+• Used by Trial Balance report and double-entry posting engine.
+11.3  Users (/users)
+• Filters: All Roles, All Statuses. Export.
+• Table: Name (+email), Role, Phone, Branch, Status, Last Login, View icon.
+• New User form: see Section 4.3. Submit for Approval flow.
+11.4  Tenants (/tenants)
+• Table: Tenant Name (+slug), Type, Prefix, Currency, Domain, Contact Email, Status, Created, Edit/View.
+• New Tenant form: see Section 4.2.
+11.5  Exchange Rates (/exchange-rates)
+• Current Rates table: Pair (NGN/CAD, NGN/CNY, NGN/EUR, NGN/GBP, NGN/USD), Buy Rate, Sell Rate, Mid Rate, Effective Date.
+• Right panel: Currency Converter — enter NGN amount, see all currency equivalents live.
+• 'Refresh Rates' button (triggers FX Rate Update scheduled job manually).
+11.6  Audit Logs (/audit-logs)
+• Read-only system trail. Filter by action / entity type. Export.
+• Columns: Action badge (LOGIN/UPDATE/CREATE/DELETE), Entity Type, Entity ID, Description, User ID, IP Address, Timestamp.
+11.7  Scheduled Jobs (/scheduled-jobs)
+Card grid (4 per row). Each card: name, description, Active badge, Schedule, Last Run, Records, Errors, run count, History + Run Now buttons.
+All Scheduled JobsInterest AccrualDaily savings interest accrual for all accounts. 12:30 AM daily.Interest PostingMonthly interest credit to savings accounts. Midnight on 1st of month.Overdue DetectionFlag overdue loans, calculate penalties. 2:00 AM daily.End of DayEOD processing for all tenants. 1:00 AM daily.End of MonthEOM processing (interest, fees, statements). 2:00 AM on 1st of month.MV RefreshRefresh dashboard materialised views. Every 15 minutes.File ValidationValidate queued posting files. Every 15 seconds.File PostingPost validated posting file transactions. Every 15 seconds.FX Rate UpdatePull exchange rates from external API. 6:00 AM daily.
+• Job History page: Status, Started, Ended, Duration (ms), Records, Errors. Export.
+• Execution Detail modal: Job Name, Duration, Started, Ended, Records Processed, Errors, Metadata JSON.
+11.8  Settings (/settings)
+• Profile section: Name, Email, Role, Tenant (read-only display)
+• Appearance: Mode toggle (Light / Dark / System) + Colour palette (Blue / Crimson / Indigo / Purple)
+• Security — Change Password: Current Password, New Password, Confirm New Password, Change Password button
+
+12.  Borrower Channels (NEW)
+12.1  Native Mobile App (iOS + Android)
+• Built in React Native, consuming the bankOS Laravel Sanctum API
+• Login: Institution Code + Email + Password + 2FA OTP
+• Home screen: account balance(s), quick actions (Pay, Transfer, Apply for Loan, Top up)
+• Loan application: simplified flow, pre-fills from profile, uploads docs via camera
+• Repayment: select loan, enter amount, choose channel (card / wallet / mobile money)
+• Statement: scrollable transaction history with date filter
+• Notifications: push notifications for all trigger events (see Section 8.5)
+• Biometric login option (Face ID / Fingerprint) via device OS
+• Offline mode: last-seen balance cached; repayments queued and synced on reconnect
+12.2  USSD Channel
+• Shortcode: *944# (or tenant-configured shortcode via Telco agreement)
+• Menu tree:
+? 1. Check Balance ? enter PIN ? balance displayed
+? 2. Mini Statement ? last 5 transactions
+? 3. Repay Loan ? enter loan ref + amount + confirm ? deducted from wallet or initiates payment
+? 4. Apply for Loan ? enter amount + product code ? queued for officer review
+? 5. Transfer ? enter account number + amount + PIN ? deduct wallet
+? 0. Exit
+• USSD sessions managed via Africa's Talking or Twilio USSD API
+• All USSD actions logged to audit trail with MSISDN + session ID
+
+13.  Agent Banking (NEW)
+13.1  Agent Onboarding & Management
+• Agent record: Name, NIN, BVN, Phone, Address, GPS home location, assigned Branch, Status (ACTIVE/SUSPENDED)
+• Float Wallet: agent holds a pre-funded float balance (NGN). Used for cash-out and loan disbursements.
+• Transaction Limits: configurable per-agent daily cash-in, cash-out, and transfer limits
+• Commissions: per-transaction commission rates (flat or %) credited to agent wallet on confirmed transaction
+• GPS Visit Logging: agent checks in at customer location. Latitude/longitude recorded and stored on visit record.
+• Agent dashboard: today's transactions, float balance, commission earned, pending visits
+13.2  Field Officer Offline Mode
+• Field officers (agent role) can use mobile app in offline mode
+• Offline actions: record repayments, check in at visits, add meeting attendance
+• All offline actions stored locally (SQLite) and synced to server on reconnect
+• Conflict resolution: server timestamp wins for repayments; duplicate detection by reference number
+
+14.  Risk & Compliance (NEW)
+14.1  IFRS 9 Expected Credit Loss (ECL)
+• Loan staging: Stage 1 (performing), Stage 2 (significant increase in credit risk), Stage 3 (credit-impaired)
+• ECL calculation: 12-month ECL (Stage 1) and Lifetime ECL (Stage 2/3)
+• Inputs: PD (Probability of Default), LGD (Loss Given Default), EAD (Exposure at Default), Discount Factor
+• Provisioning journal: automatic GL postings to Loan Loss Provision accounts on EOD/EOM runs
+• Scenario modelling: base / optimistic / pessimistic scenario weights configurable by tenant admin
+• IFRS 9 ECL Report: stage distribution, ECL amounts, coverage ratios, period-over-period movement
+• Regulatory: required by CBN for licensed MFBs. Configurable for cooperative segment.
+14.2  Credit Bureau Integration
+• Supported bureaus: CRC Credit Bureau, XDS (Creditinfo), FirstCentral Credit Bureau
+• Pull: credit inquiry on new loan application. Returns credit score, existing facilities, delinquency history.
+• Push: update bureau with new loan disbursements, repayments, and defaults (monthly batch or real-time)
+• Bureau consent: customer authorises bureau pull during loan application. Consent stored with timestamp.
+• Bureau report stored on loan record. Visible to Loan Officer and Compliance Officer.
+14.3  Overdue Scoring & Smart Collection Routing
+• Daily overdue detection job (see Section 11.7) calculates Days Past Due (DPD) per loan
+• Overdue score: composite of DPD, historical repayment behaviour, loan size, customer segment
+• Smart routing: high-risk accounts ? Compliance Officer queue; medium ? Loan Officer; low ? automated SMS nudge
+• Escalation ladder: 1 day DPD = SMS/WhatsApp nudge; 7 DPD = Loan Officer call task; 30 DPD = formal demand letter; 90 DPD = legal team queue
+• Collection log: every contact attempt recorded (channel, agent, outcome, next action)
+
+15.  Additional Products
+15.1  Goal-based Savings & Fixed Deposits
+See Section 7.4 for full details.
+• Goal-based: target amount + date, progress bar, configurable withdrawal restrictions
+• Fixed Deposit: fixed tenure, guaranteed rate, early exit penalty, auto-renewal option
+15.2  Embedded Insurance (NEW)
+• Credit life insurance: covers outstanding loan balance on borrower death/total permanent disability
+• Asset insurance: covers collateral asset (vehicle, equipment) against damage/theft
+• Integration: partner insurance API (e.g. Leadway, AXA Mansard, AIICO). Premium calculated on loan origination.
+• Premium options: single upfront premium (added to loan), or monthly premium deducted from savings account
+• Claim trigger: loan officer flags death/disability/loss ? claim form submitted via platform ? insurer API notified
+• Policy log on customer record: insurer, policy number, cover amount, premium, status
+
+16.  Security & UX
+16.1  Security Controls
+• Two-Factor Authentication: SMS OTP or TOTP Authenticator (Google/Authy). Per-user opt-in or tenant-enforced.
+• Device binding: on first login from new device, user receives device verification email/SMS before access granted
+• Session timeout: configurable per tenant (default 30 min idle). Session invalidated on logout.
+• Brute-force protection: 5 failed login attempts ? account temporarily locked. Unlock via email link.
+• Password policy: min 8 chars, must contain uppercase, lowercase, number. Expires every 90 days (configurable).
+• Role-based UI: menu items and action buttons hidden/shown based on Spatie permissions
+• HTTPS only. Cloudflare WAF. CSP headers. SQL injection and XSS protection via Laravel's built-in escaping.
+16.2  Multi-language Support
+• Primary language: English
+• Additional locales (stretch goal): Hausa, Yoruba, Igbo, Nigerian Pidgin
+• Implementation: Laravel localisation files (lang/*.json). Language switcher in user settings.
+• USSD and SMS notifications: templates available in all supported languages
+
+17.  Key Data Models
+17.1  Tenant
+tenants tableidUUID PKnameInstitution full nameshort_nameUnique slug (used in domain routing)typeENUM: bank | lender | cooperativeaccount_prefix3-digit string. All account numbers prefixed with this.primary_currencyDefault: NGNsupported_currenciesJSON array e.g. [NGN, USD, GBP]domainCustom domain or subdomaincbn_license_numberCBN licence refnibss_institution_codeNIBSS coderouting_numberBank routing numberlogo_urlURL stringstatusENUM: active | inactive | suspendedcreated_atTimestamp
+17.2  Customer
+customers tableidUUID PKtenant_idUUID FK ? tenantscustomer_numberAuto-generated referencetypeENUM: individual | corporatefirst_nameStringmiddle_nameString nullablelast_nameStringdate_of_birthDategenderENUM: male | femaleemailString unique per tenantphoneStringoccupationString nullablemarital_statusString nullableaddressJSON: street, city, state, postal_code, nationalitybvn11-char hashednin11-char hashedbvn_verifiedBooleannin_verifiedBooleankyc_tierENUM: level_1 | level_2 | level_3kyc_statusENUM: auto_approved | manual_review | approved | rejectedstatusENUM: active | inactive | pending | suspendedcreated_atTimestamp
+17.3  Account
+accounts tableidUUID PKtenant_idUUID FKcustomer_idUUID FKaccount_number10-char, auto-generated (prefix + random digits) or manualaccount_nameStringtypeENUM: savings | current | loan | walletcurrencyENUM: NGN | USD | GBP | EURavailable_balanceDecimal(15,2)ledger_balanceDecimal(15,2)savings_product_idUUID FK nullable ? savings_productsstatusENUM: active | dormant | closedcreated_atTimestamp
+17.4  Loan
+loans tableidUUID PKtenant_idUUID FKcustomer_idUUID FKaccount_idUUID FK ? accounts (disbursement account)product_idUUID FK ? loan_productsgroup_idUUID FK nullable ? groupsloan_numberAuto-generated referenceprincipal_amountDecimal(15,2)outstanding_balanceDecimal(15,2)interest_rateDecimal(5,4) annualinterest_methodENUM: reducing_balance | flatamortizationENUM: equal_installment | bullet | balloontenure_daysIntegerrepayment_frequencyENUM: monthly | weekly | dailypurposeTextsource_channelENUM: web | mobile | branch | ussd | agentcollateral_descText nullablecollateral_valueDecimal nullableai_credit_scoreInteger 1-100 nullablebureau_report_idUUID FK nullable ? bureau_reportsifrs9_stageENUM: stage_1 | stage_2 | stage_3ecl_provisionDecimal(15,2)statusENUM: pending | active | overdue | closed | written_offdisbursed_atTimestamp nullablecreated_atTimestamp
+17.5  Group (Group Lending)
+groups tableidUUID PKtenant_idUUID FKcentre_idUUID FK nullable ? centresnameGroup nameloan_officer_idUUID FK ? usersbranch_idUUID FK ? branchesmeeting_dayENUM: monday..sundaymeeting_timeTimemeeting_locationStringstatusENUM: active | inactive | dissolvedcreated_atTimestamp
+17.6  Scheduled Job
+scheduled_job_runs tableidUUID PKjob_nameString (e.g. interestAccrualJob)statusENUM: success | failed | runningstarted_atTimestampended_atTimestampduration_msIntegerrecordsIntegererrorsIntegermetadataJSON (tenants_processed, errors detail, etc.)
+18.  UI Design System
+18.1  Colour Palette
+Colour TokensPrimary (Blue)— buttons, active nav, badges, links, table headersPrimary Light#E6FAF8 — active nav bg, card accents, success backgroundsCrimson variant#DC2626 — alternate accent themeIndigo variant#4F46E5 — alternate accent themePurple variant#7C3AED — alternate accent themeSuccess#10B981 — ACTIVE badges, positive KPIsWarning#F59E0B — PENDING badges, amber bannersDanger#EF4444 — FAILED/OVERDUE badges, error states, log outSurface#FFFFFF — cards, modals, sidebarBackground#F9FAFB — page backgroundBorder#E5E7EB — card borders, table dividersText Primary#1F2937Text Secondary#6B7280Text Muted#9CA3AF
+18.2  Component Patterns
+• Status Badges: rounded pill. ACTIVE=blue, PENDING=amber, FAILED/INACTIVE=red, DORMANT=grey, OVERDUE=red.
+• Empty State: Lucide icon (inbox/clipboard/book) centred, bold 'No results found', grey sub-text 'Try adjusting your search or filters'.
+• Tables: white bg, grey header labels, horizontal dividers, hover row highlight, last column has eye/edit icon actions, pagination below.
+• Pagination: 'Showing X-Y of N', per-page selector (10/25/50), first/prev/next/last buttons.
+• Modals: centred overlay, white card, title + subtitle, × close, Cancel + Create/Submit button pair.
+• Forms: label above input, full-width inputs, red asterisk for required, grey helper text below, red inline validation errors.
+• Wizard: numbered steps connected by line. Active = blue circle. Complete = blue checkmark. Future = grey circle.
+• File Upload: dashed border zone, upload icon, 'Drag and drop or click to browse', file type + size limits shown.
+• Notification Banner: amber bg, warning icon, bold heading, body text. Amber for info/warning. Red for errors.
+• Breadcrumb / Back: '? Back' link top-right of sub-pages.
+
+19.  Regulatory Compliance Requirements
+IDRequirementPrioritySegment19.1CBN MFB Guidelines: Tier-based KYC (Level 1/2/3), transaction limits per tier, mandatory audit trailHighMFBs19.2NIBSS Integration: BVN/NIN validation, inbound transfer reception, eMandates for direct debitHighMFBs + Digital19.3FCCPC Digital Lending Regs 2025: Transparent pricing (APR displayed), no abusive recovery tactics, 48h data handover on request, consent-based bureau pullsHighDigital19.4NDPR: Customer data processed lawfully. Consent captured. Data retention policy. Right to deletion request.HighAll19.5IFRS 9 ECL: Loan staging, ECL provisioning, scenario modelling, GL provisioning journalsHighMFBs19.6Maker-Checker Controls: all create/approve/write-off actions require dual authorisation for amounts above configurable thresholdsHighAll19.7Audit Trail: immutable log of all mutations. Action, Entity, User, IP, Timestamp. Exportable.HighAll19.8Credit Bureau: monthly push of loan data to CRC/XDS/FirstCentral. Pull on new application with customer consent.MediumMFBs + Digital19.9Transparent Pricing: APR, processing fees, insurance fees, and total repayment amount shown to borrower before acceptanceHighDigital
+20.  Requirements Traceability Matrix
+Full coverage of all 55 line items from the Grok feature list mapped to specification sections:
+
+IDRequirementPrioritySegment1.1Multi-tenant SaaS: cooperatives, licensed MFBs, digital lenders — Section 1HighAll1.2Scope: all staging features + additions + 2026 must-haves — Sections 1-19HighAll1.3Regulatory: CBN, FCCPC 2025, NDPR, IFRS 9 — Section 19HighMFBs + Digital2.1Backend: Laravel, multi-tenancy — Section 2HighAll2.2Database: MySQL — Section 2HighAll2.3Frontend: Blade + Tailwind + Alpine.js/Vue — Section 2HighAll2.4Auth: Breeze/Fortify + Sanctum + Spatie RBAC — Sections 2, 3, 4HighAll3.1Super Admin role — Section 3HighAll3.2Compliance Officer role + gate — Sections 3, 4.3HighMFBs + Coops3.3Tenant Admin role — Section 3HighAll3.4Loan Officer / Teller / Agent roles — Section 3MediumAll4.1Login: Institution Code + Email + Password — Section 4.1HighAll4.2New Tenant wizard (all compliance fields) — Section 4.2HighMFBs + Digital4.3New User form + approval flow — Section 4.3HighAll5.1Dashboard KPI cards (10) — Section 5.1HighAll5.2Charts: Tx Volume, Portfolio, PAR Aging — Section 5.2HighAll6.1Customer list — Section 6.1HighAll6.23-step customer creation wizard — Section 6.2HighAll6.3KYC review queue — Section 6.3HighAll7.1Accounts list + open account form — Section 7.1, 7.2HighAll7.2Savings products config (incl. Goal + FD) — Sections 7.3, 7.4MediumAll7.3Internal wallet — Section 7.5MediumDigital + MFBs8.1Transactions list + new transaction form — Section 8.1, 8.2HighAll8.2Inbound transfers — Section 8.3HighAll8.3Posting files — Section 8.4HighAll8.4Notifications engine (SMS/WhatsApp/Email/Push) — Section 8.5HighAll8.5Real-time repayment channels — Section 8.6HighAll9.1Loans list + new loan application — Section 9.1, 9.2HighAll9.2Loan products config — Section 9.3HighAll9.3Loan restructuring & moratorium — Section 9.4HighAll9.4Group/Centre/Meeting management — Section 9.5MediumCoops + MFBs10.1Workflows: task inbox, instances — Section 10.1HighAll10.2KYC document review — Section 10.2HighAll10.3Reports: all 6 types incl. PAR & IFRS 9 — Section 10.3HighAll11.1Branches — Section 11.1HighMFBs + Coops11.2GL Accounts — Section 11.2HighMFBs11.3Users management — Section 11.3HighAll11.4Tenants management — Section 11.4HighAll11.5Exchange Rates — Section 11.5HighAll11.6Audit Logs — Section 11.6HighAll11.7Scheduled Jobs dashboard — Section 11.7HighAll11.8Settings (theme, colour, password) — Section 11.8HighAll12.1Native mobile app iOS/Android — Section 12.1HighAll12.2USSD channel — Section 12.2HighCoops + rural MFBs13.1Agent onboarding, wallet, commissions, GPS — Section 13.1HighCoops + MFBs13.2Field officer offline mode — Section 13.2MediumCoops + MFBs14.1IFRS 9 ECL staging + provisioning — Section 14.1HighMFBs14.2Credit bureau CRC/XDS/FirstCentral — Section 14.2MediumMFBs + Digital14.3Overdue scoring + smart routing — Section 14.3MediumDigital + MFBs15.1Goal savings + fixed deposits — Sections 7.4, 15.1MediumAll15.2Embedded insurance — Section 15.2MediumDigital + MFBs16.12FA, device binding, session timeout — Section 16.1HighAll16.2Multi-language (EN + Hausa/Yoruba/Igbo/Pidgin) — Section 16.2LowNice-to-have
+21.  Master AI Rebuild Prompt
+Copy the block below in full and paste it into your AI coding tool (Cursor, v0.dev, Claude, ChatGPT, etc.) to start the build. Feed this entire document as additional context.
+
+??  PROMPT START  ??
+Build a full-stack multi-tenant core banking and lending SaaS application
+called 'bankOS' for Nigerian microfinance banks, digital lenders,
+and co-operative societies. This is a complete rebuild based on a
+documented staging environment + Grok feature specification.
+
+?? TECH STACK ??
+Backend:  Laravel (latest) · PHP 8.3+ · MySQL · Laravel Sanctum
+          Spatie Laravel Permission (RBAC) · Laravel Queue (Redis)
+          Laravel Scheduler · hyn/multi-tenant OR tenant_id scoping
+Frontend: Laravel Blade + Tailwind CSS v3 + Alpine.js (or Vue.js)
+          Lucide icons · Chart.js (dashboard charts)
+Mobile:   React Native (iOS + Android) consuming Laravel Sanctum API
+
+?? DESIGN SYSTEM ??
+Primary colour: (blue). Page bg: #F9FAFB. Cards: #FFFFFF.
+Status badges: ACTIVE=blue, PENDING=amber, FAILED/OVERDUE=red.
+Layout: fixed left sidebar (280px, collapsible) + fixed top header.
+Fonts: Inter. Icons: Lucide React / Lucide Blade package.
+Theme: light / dark / system toggle + 4 accent colour options.
+
+?? MULTI-TENANCY ??
+Every table has tenant_id FK. All queries scoped by tenant.
+Tenant types: bank | lender | cooperative.
+Account numbers prefixed by 3-digit tenant prefix.
+Login requires Institution Code (short_name) + Email + Password.
+GL accounts auto-provisioned from Nigerian standard CoA on tenant create.
+
+?? USER ROLES (Spatie) ??
+super_admin, compliance_officer, tenant_admin, loan_officer,
+teller, agent, auditor
+Rule: compliance_officer must exist before any other role is created per tenant.
+New users require 'Submit for Approval' (maker-checker Camunda workflow).
+
+?? MODULES (build in this order) ??
+1.  Auth:            Login (Institution Code + Email + PW + 2FA OTP),
+                     Forgot Password, Device Binding, Session Timeout
+2.  Dashboard:       10 KPI cards + 4 charts (TxVolume, LoanPortfolio,
+                     AccountDistribution, PAR Aging widget)
+3.  Customers:       List + 3-step wizard (BVN/NIN ? Details ? Review)
+4.  Accounts:        List + Open Account form
+5.  Transactions:    List + New Tx (Deposit/Withdrawal/Transfer tabs)
+6.  Inbound Xfers:   Webhook receiver + read-only list
+7.  Posting Files:   Upload CSV/Excel + validate + bulk post
+8.  Loans:           List + New Application + Pre-Qual + AI Score
+9.  Loan Products:   CRUD with all config fields
+10. Loan Restructure:Extend/reduce/grace/partial write-off/full write-off
+11. Group Lending:   Groups + Centres + Meetings + Attendance + Collection
+12. Savings:         Accounts list + Products CRUD (Standard/Goal/FD)
+13. Internal Wallet: Per-customer NGN wallet, fund/debit/transfer
+14. Workflows:       Task inbox, available tasks, instances (Camunda)
+15. KYC Review:      Queue + approve/reject/request more
+16. Reports:         Account Statement, Trial Balance, Loan Portfolio,
+                     Interest Accrual, PAR & Aging, IFRS 9 ECL
+17. Notifications:   SMS/WhatsApp/Email/Push engine + templates + log
+18. Repayment Chnls: Card (Paystack), MoMo, USSD, Agent POS, Direct Debit
+19. Branches:        List + modal create
+20. GL Accounts:     Hierarchical CoA + auto-provisioning
+21. Users:           List + new user (CO gate) + approval workflow
+22. Tenants:         List + new tenant wizard (Basic + Admin + Regulatory)
+23. Exchange Rates:  FX table + live converter + refresh
+24. Audit Logs:      Immutable read-only trail + export
+25. Scheduled Jobs:  9 jobs dashboard + history + run now
+26. Settings:        Profile, theme/colour, change password
+27. Agent Banking:   Onboarding, float wallet, commissions, GPS visits
+28. USSD Channel:    Menu tree via Africa's Talking (*944# or custom)
+29. Mobile App:      React Native — login, home, apply, repay, statement
+30. IFRS 9 ECL:      Stage classification, ECL calc, GL provisioning
+31. Credit Bureau:   CRC/XDS/FirstCentral pull (on application) + push (monthly)
+32. Overdue Scoring: DPD calc, smart routing, escalation ladder, collection log
+33. Insurance:       Embedded credit life / asset insurance (partner API)
+34. 2FA:             SMS OTP + TOTP Authenticator, device binding
+
+?? BUSINESS RULES ??
+BVN/NIN validation via NIBSS API ? returns photo, name, DOB, gender, phone.
+KYC tiers: LEVEL_1 (BVN only, auto-approve) / LEVEL_2 (+ID doc) / LEVEL_3 (+address proof).
+Loan pre-qualification: KYC ok, age >= 18, BVN verified, within product limits,
+  DTI <= product max, no existing overdue. Pass/fail per check shown.
+AI credit score: integer 1-100. Configurable approval threshold per product.
+Compliance Officer must exist before other user roles can be created (per tenant).
+All create/approve/write-off above threshold requires maker-checker (Camunda).
+IFRS 9: Stage 1 = performing (12m ECL); Stage 2 = SICR (lifetime ECL); Stage 3 = impaired.
+Group solidarity: members can be held liable for peer default (product-configurable).
+Overdue escalation: 1 DPD=SMS; 7 DPD=LO task; 30 DPD=demand letter; 90 DPD=legal queue.
+
+?? SCHEDULED JOBS (9 total) ??
+Interest Accrual    : 12:30 AM daily
+Interest Posting    : Midnight on 1st of month
+Overdue Detection   : 2:00 AM daily
+End of Day          : 1:00 AM daily
+End of Month        : 2:00 AM on 1st of month
+MV Refresh          : Every 15 minutes
+File Validation     : Every 15 seconds
+File Posting        : Every 15 seconds
+FX Rate Update      : 6:00 AM daily
+
+?? CURRENCIES ??  NGN (primary), USD, GBP, EUR, CAD, CNY
+
+?? REGULATORY ??
+CBN MFB Guidelines, FCCPC Digital Lending Regs 2025, NDPR,
+IFRS 9 ECL, NIBSS compliance, CRC/XDS/FirstCentral bureau push/pull.
+Transparent pricing (APR displayed before borrower acceptance).
+No abusive recovery tactics. 48h data handover on NDPR request.
+??  PROMPT END  ??
+
+bankOS Master Specification v2.0  ·  Derived from 64 LendCore staging screenshots + Grok feature list  ·  March 2026

@@ -1,0 +1,894 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<meta name="ProgId" content="Word.Document">
+<meta name="Generator" content="Microsoft Word 15">
+<meta name="Originator" content="Microsoft Word 15">
+<style>
+    body { font-family: 'Segoe UI', Calibri, Arial, sans-serif; font-size: 11pt; color: #1a1a1a; line-height: 1.6; margin: 40px 60px; }
+    h1 { font-size: 24pt; color: #1e3a5f; border-bottom: 3px solid #1e3a5f; padding-bottom: 8px; margin-top: 30px; }
+    h2 { font-size: 18pt; color: #2c5282; margin-top: 30px; border-bottom: 1px solid #cbd5e0; padding-bottom: 5px; }
+    h3 { font-size: 14pt; color: #2d3748; margin-top: 20px; }
+    h4 { font-size: 12pt; color: #4a5568; margin-top: 15px; }
+    table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+    th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: left; font-size: 10pt; }
+    th { background-color: #edf2f7; color: #2d3748; font-weight: bold; }
+    td { background-color: #ffffff; }
+    pre { background-color: #f7fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 12px 16px; font-family: 'Consolas', 'Courier New', monospace; font-size: 9.5pt; line-height: 1.5; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; }
+    code { font-family: 'Consolas', 'Courier New', monospace; font-size: 9.5pt; background-color: #edf2f7; padding: 2px 5px; border-radius: 3px; }
+    .cover { text-align: center; margin-top: 150px; margin-bottom: 150px; }
+    .cover h1 { font-size: 36pt; border: none; color: #1e3a5f; }
+    .cover p { font-size: 14pt; color: #4a5568; }
+    .note { background-color: #ebf8ff; border-left: 4px solid #3182ce; padding: 10px 15px; margin: 10px 0; font-size: 10pt; }
+    .warning { background-color: #fffbeb; border-left: 4px solid #d69e2e; padding: 10px 15px; margin: 10px 0; font-size: 10pt; }
+    .important { background-color: #fff5f5; border-left: 4px solid #e53e3e; padding: 10px 15px; margin: 10px 0; font-size: 10pt; }
+    ul, ol { margin: 5px 0; padding-left: 25px; }
+    li { margin-bottom: 4px; }
+    .page-break { page-break-before: always; }
+    .toc { margin: 20px 0; }
+    .toc a { text-decoration: none; color: #2c5282; }
+    .toc li { margin-bottom: 8px; font-size: 11pt; }
+    .badge { display: inline-block; background-color: #48bb78; color: white; padding: 2px 8px; border-radius: 3px; font-size: 9pt; font-weight: bold; }
+    .badge-blue { background-color: #4299e1; }
+    .badge-yellow { background-color: #ecc94b; color: #1a1a1a; }
+</style>
+</head>
+<body>
+
+<!-- COVER PAGE -->
+<div class="cover">
+    <h1>Deployment Plan</h1>
+    <p style="font-size: 28pt; color: #1e3a5f; font-weight: bold;">bankOS</p>
+    <p style="font-size: 16pt; color: #718096;">Multi-Tenant Core Banking &amp; Lending SaaS</p>
+    <br><br>
+    <p><strong>3 Laravel Applications</strong></p>
+    <p>Admin Portal &bull; Customer Portal &bull; Super Admin</p>
+    <br><br>
+    <p style="font-size: 10pt; color: #a0aec0;">Prepared: March 18, 2026</p>
+    <p style="font-size: 10pt; color: #a0aec0;">Antigravity Codes</p>
+</div>
+
+<!-- TABLE OF CONTENTS -->
+<div class="page-break"></div>
+<h1>Table of Contents</h1>
+<div class="toc">
+<ol>
+    <li><a href="#costs">Costs &amp; Architecture Overview</a></li>
+    <li><a href="#phase1">Phase 1 — Create &amp; Access Server</a></li>
+    <li><a href="#phase2">Phase 2 — Server Security &amp; Setup</a></li>
+    <li><a href="#phase3">Phase 3 — Install Software Stack</a></li>
+    <li><a href="#phase4">Phase 4 — Upload Your Code</a></li>
+    <li><a href="#phase5">Phase 5 — Configure Each App</a></li>
+    <li><a href="#phase6">Phase 6 — Nginx Configuration</a></li>
+    <li><a href="#phase7">Phase 7 — SSL Certificates (Free HTTPS)</a></li>
+    <li><a href="#phase8">Phase 8 — Queue Workers (Supervisor)</a></li>
+    <li><a href="#phase9">Phase 9 — Database Migration</a></li>
+    <li><a href="#phase10">Phase 10 — Continuous Deployment</a></li>
+    <li><a href="#phase11">Phase 11 — Database Backups</a></li>
+    <li><a href="#reference">Quick Reference Card</a></li>
+</ol>
+</div>
+
+<!-- COSTS & ARCHITECTURE -->
+<div class="page-break"></div>
+<h1 id="costs">1. Costs &amp; Architecture Overview</h1>
+
+<h3>Monthly Costs</h3>
+<table>
+    <tr><th>Item</th><th>Cost</th></tr>
+    <tr><td>Hetzner CX32 (4 vCPU, 8GB RAM, 80GB SSD)</td><td>&euro;8.57/mo (~$10)</td></tr>
+    <tr><td>Domain (e.g. bankos.ng or .com)</td><td>~$15/yr</td></tr>
+    <tr><td>SSL (Let's Encrypt)</td><td>Free</td></tr>
+    <tr><td>SMTP (Brevo free tier &mdash; 300 emails/day)</td><td>Free</td></tr>
+    <tr><td><strong>Total</strong></td><td><strong>~$10/month</strong></td></tr>
+</table>
+
+<h3>Server Architecture</h3>
+<pre>
+Hetzner CX32 (Ubuntu 22.04)
+&#9500;&#9472;&#9472; Nginx (reverse proxy + SSL)
+&#9474;   &#9500;&#9472;&#9472; admin.yourdomain.com    &#8594; bankos (Admin Portal)
+&#9474;   &#9500;&#9472;&#9472; app.yourdomain.com      &#8594; bankos-portal (Customer Portal)
+&#9474;   &#9492;&#9472;&#9472; super.yourdomain.com    &#8594; bankos-superadmin (Super Admin)
+&#9500;&#9472;&#9472; PHP 8.1-FPM (3 pools)
+&#9500;&#9472;&#9472; PostgreSQL 15
+&#9500;&#9472;&#9472; Redis (sessions + cache + queues)
+&#9492;&#9472;&#9472; Supervisor (queue workers)
+</pre>
+
+<!-- PHASE 1 -->
+<div class="page-break"></div>
+<h1 id="phase1">2. Phase 1 &mdash; Create &amp; Access Server</h1>
+
+<h3>1.1 Create Hetzner Account &amp; Server</h3>
+<ol>
+    <li>Go to <strong>hetzner.com/cloud</strong> and sign up</li>
+    <li>Create new project &rarr; Add Server:
+        <ul>
+            <li><strong>Location:</strong> Helsinki or Falkenstein (cheapest)</li>
+            <li><strong>Image:</strong> Ubuntu 22.04</li>
+            <li><strong>Type:</strong> CX32 (4 vCPU, 8GB RAM, 80GB SSD)</li>
+            <li><strong>SSH Key:</strong> Skip this &mdash; don't add one</li>
+            <li><strong>Name:</strong> bankos-prod</li>
+        </ul>
+    </li>
+    <li>Hetzner will email you the <strong>root password</strong> to your registered email</li>
+</ol>
+
+<h3>1.2 Connect to Server</h3>
+<p>Download and install <strong>PuTTY</strong> (putty.org) or use Windows Terminal:</p>
+<pre>
+ssh root@YOUR_SERVER_IP
+# It will ask: "Are you sure you want to continue connecting?" &rarr; type: yes
+# Enter the root password from Hetzner's email
+# It will force you to change the password &mdash; pick a strong one and SAVE IT
+</pre>
+
+<div class="important">
+    <strong>Important:</strong> From this point, every command below is typed inside this SSH session.
+</div>
+
+<!-- PHASE 2 -->
+<h1 id="phase2">3. Phase 2 &mdash; Server Security &amp; Setup</h1>
+
+<h3>2.1 Create a deploy user (don't run apps as root)</h3>
+<pre>
+adduser deploy
+# Set a password when prompted &mdash; SAVE THIS PASSWORD TOO
+</pre>
+<pre>
+usermod -aG sudo deploy
+</pre>
+
+<h3>2.2 Allow password SSH login</h3>
+<p>Already enabled by default on Hetzner, but confirm:</p>
+<pre>
+nano /etc/ssh/sshd_config
+</pre>
+<p>Find and make sure these lines say:</p>
+<pre>
+PermitRootLogin yes
+PasswordAuthentication yes
+</pre>
+<p>Save: <code>Ctrl+O</code>, <code>Enter</code>, <code>Ctrl+X</code></p>
+<pre>
+systemctl restart sshd
+</pre>
+
+<h3>2.3 Firewall</h3>
+<pre>
+ufw allow OpenSSH
+ufw allow 80
+ufw allow 443
+ufw --force enable
+</pre>
+
+<h3>2.4 Test deploy user login</h3>
+<p>Open a <strong>NEW</strong> terminal window:</p>
+<pre>
+ssh deploy@YOUR_SERVER_IP
+# Enter the deploy user password
+# If this works, you're good. Close this test window.
+</pre>
+
+<!-- PHASE 3 -->
+<div class="page-break"></div>
+<h1 id="phase3">4. Phase 3 &mdash; Install Software Stack</h1>
+<p>Run all of these as <strong>root</strong> (the first SSH window):</p>
+
+<h3>3.1 Update system</h3>
+<pre>
+apt update &amp;&amp; apt upgrade -y
+</pre>
+
+<h3>3.2 Install PHP 8.1</h3>
+<pre>
+apt install -y software-properties-common
+add-apt-repository ppa:ondrej/php -y
+apt update
+apt install -y php8.1 php8.1-fpm php8.1-pgsql php8.1-mbstring \
+  php8.1-xml php8.1-bcmath php8.1-curl php8.1-zip php8.1-intl \
+  php8.1-redis php8.1-gd php8.1-readline
+</pre>
+
+<h3>3.3 Install Composer</h3>
+<pre>
+curl -sS https://getcomposer.org/installer | php
+mv composer.phar /usr/local/bin/composer
+</pre>
+
+<h3>3.4 Install PostgreSQL 15</h3>
+<pre>
+apt install -y postgresql-15 postgresql-client-15
+systemctl enable postgresql
+systemctl start postgresql
+</pre>
+
+<p>Create the database:</p>
+<pre>
+sudo -u postgres psql
+</pre>
+
+<p>Inside the PostgreSQL prompt (you'll see <code>postgres=#</code>):</p>
+<pre>
+CREATE USER bankos WITH PASSWORD 'pick_a_strong_db_password_here';
+CREATE DATABASE bankos OWNER bankos;
+GRANT ALL PRIVILEGES ON DATABASE bankos TO bankos;
+\q
+</pre>
+
+<div class="important">
+    <strong>SAVE</strong> this database password &mdash; you'll need it for .env files.
+</div>
+
+<h3>3.5 Install Redis</h3>
+<pre>
+apt install -y redis-server
+systemctl enable redis-server
+systemctl start redis-server
+</pre>
+
+<h3>3.6 Install Nginx</h3>
+<pre>
+apt install -y nginx
+systemctl enable nginx
+</pre>
+
+<h3>3.7 Install Node.js 20 (for Vite builds)</h3>
+<pre>
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
+</pre>
+
+<h3>3.8 Install Supervisor</h3>
+<pre>
+apt install -y supervisor
+systemctl enable supervisor
+</pre>
+
+<h3>3.9 Install Git</h3>
+<pre>
+apt install -y git
+</pre>
+
+<!-- PHASE 4 -->
+<div class="page-break"></div>
+<h1 id="phase4">5. Phase 4 &mdash; Upload Your Code</h1>
+
+<h3>Option A: Using GitHub (Recommended)</h3>
+
+<h4>On your local Windows machine, push each app to a private GitHub repo:</h4>
+<pre>
+# In each app folder locally:
+cd "c:/laragon/www/antigravity codes/bankos"
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin https://github.com/YOUR_USERNAME/bankos.git
+git branch -M main
+git push -u origin main
+
+# Repeat for bankos-portal and bankos-superadmin
+</pre>
+
+<h4>On the server (SSH as deploy user):</h4>
+<pre>
+ssh deploy@YOUR_SERVER_IP
+</pre>
+<pre>
+sudo mkdir -p /var/www
+sudo chown deploy:deploy /var/www
+cd /var/www
+</pre>
+<pre>
+git clone https://github.com/YOUR_USERNAME/bankos.git
+# Enter your GitHub username and Personal Access Token (not password)
+# Generate token at: github.com &rarr; Settings &rarr; Developer settings
+#   &rarr; Personal access tokens &rarr; Tokens (classic) &rarr; Generate
+# Give it "repo" scope
+
+git clone https://github.com/YOUR_USERNAME/bankos-portal.git
+git clone https://github.com/YOUR_USERNAME/bankos-superadmin.git
+</pre>
+
+<p>Save credentials so you don't have to re-enter them:</p>
+<pre>
+git config --global credential.helper store
+</pre>
+
+<h3>Option B: Direct Upload (No GitHub)</h3>
+<p>If you don't want to use GitHub, use <strong>FileZilla</strong> (free FTP/SFTP client):</p>
+<ol>
+    <li>Download FileZilla from filezilla-project.org</li>
+    <li>Connect: <strong>Host:</strong> YOUR_SERVER_IP, <strong>Username:</strong> deploy, <strong>Password:</strong> your deploy password, <strong>Port:</strong> 22 (SFTP)</li>
+    <li>Navigate to <code>/var/www/</code> on the server</li>
+    <li>Upload all 3 app folders there</li>
+</ol>
+
+<!-- PHASE 5 -->
+<div class="page-break"></div>
+<h1 id="phase5">6. Phase 5 &mdash; Configure Each App</h1>
+
+<h3>5.1 Set up bankos (Admin Portal)</h3>
+<pre>
+cd /var/www/bankos
+
+composer install --no-dev --optimize-autoloader
+
+cp .env.example .env
+nano .env
+</pre>
+
+<p>Set these values in .env:</p>
+<pre>
+APP_NAME=bankOS
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://admin.yourdomain.com
+
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=bankos
+DB_USERNAME=bankos
+DB_PASSWORD=your_db_password_here
+
+CACHE_DRIVER=redis
+SESSION_DRIVER=redis
+QUEUE_CONNECTION=redis
+REDIS_HOST=127.0.0.1
+
+MAIL_MAILER=smtp
+MAIL_HOST=smtp-relay.brevo.com
+MAIL_PORT=587
+MAIL_USERNAME=your_brevo_login
+MAIL_PASSWORD=your_brevo_smtp_key
+MAIL_FROM_ADDRESS=noreply@yourdomain.com
+MAIL_FROM_NAME="bankOS"
+</pre>
+
+<p>Save: <code>Ctrl+O</code>, <code>Enter</code>, <code>Ctrl+X</code></p>
+
+<pre>
+php artisan key:generate
+php artisan migrate --force
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+npm ci &amp;&amp; npm run build
+
+sudo chown -R www-data:www-data storage bootstrap/cache
+sudo chmod -R 775 storage bootstrap/cache
+</pre>
+
+<h3>5.2 Set up bankos-portal (Customer Portal)</h3>
+<pre>
+cd /var/www/bankos-portal
+
+composer install --no-dev --optimize-autoloader
+
+cp .env.example .env
+nano .env
+</pre>
+
+<pre>
+APP_NAME="bankOS Portal"
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://app.yourdomain.com
+
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=bankos
+DB_USERNAME=bankos
+DB_PASSWORD=your_db_password_here
+
+CACHE_DRIVER=redis
+SESSION_DRIVER=redis
+QUEUE_CONNECTION=redis
+REDIS_HOST=127.0.0.1
+
+MAIL_MAILER=smtp
+MAIL_HOST=smtp-relay.brevo.com
+MAIL_PORT=587
+MAIL_USERNAME=your_brevo_login
+MAIL_PASSWORD=your_brevo_smtp_key
+MAIL_FROM_ADDRESS=noreply@yourdomain.com
+MAIL_FROM_NAME="bankOS"
+</pre>
+
+<pre>
+php artisan key:generate
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+npm ci &amp;&amp; npm run build
+
+sudo chown -R www-data:www-data storage bootstrap/cache
+sudo chmod -R 775 storage bootstrap/cache
+</pre>
+
+<h3>5.3 Set up bankos-superadmin</h3>
+<pre>
+cd /var/www/bankos-superadmin
+
+composer install --no-dev --optimize-autoloader
+
+cp .env.example .env
+nano .env
+</pre>
+
+<pre>
+APP_NAME="bankOS SuperAdmin"
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://super.yourdomain.com
+
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=bankos
+DB_USERNAME=bankos
+DB_PASSWORD=your_db_password_here
+
+CACHE_DRIVER=redis
+SESSION_DRIVER=redis
+QUEUE_CONNECTION=redis
+REDIS_HOST=127.0.0.1
+</pre>
+
+<pre>
+php artisan key:generate
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+sudo chown -R www-data:www-data storage bootstrap/cache
+sudo chmod -R 775 storage bootstrap/cache
+</pre>
+
+<!-- PHASE 6 -->
+<div class="page-break"></div>
+<h1 id="phase6">7. Phase 6 &mdash; Nginx Configuration</h1>
+
+<h3>6.1 bankos Admin</h3>
+<pre>
+sudo nano /etc/nginx/sites-available/bankos-admin
+</pre>
+
+<p>Paste:</p>
+<pre>
+server {
+    listen 80;
+    server_name admin.yourdomain.com;
+    root /var/www/bankos/public;
+    index index.php;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+
+    charset utf-8;
+    client_max_body_size 50M;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/var/run/php/php8.1-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+</pre>
+
+<h3>6.2 bankos Portal</h3>
+<pre>
+sudo nano /etc/nginx/sites-available/bankos-portal
+</pre>
+
+<p>Paste (same structure, different server_name and root):</p>
+<pre>
+server {
+    listen 80;
+    server_name app.yourdomain.com;
+    root /var/www/bankos-portal/public;
+    index index.php;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+
+    charset utf-8;
+    client_max_body_size 50M;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/var/run/php/php8.1-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+</pre>
+
+<h3>6.3 bankos SuperAdmin</h3>
+<pre>
+sudo nano /etc/nginx/sites-available/bankos-superadmin
+</pre>
+
+<pre>
+server {
+    listen 80;
+    server_name super.yourdomain.com;
+    root /var/www/bankos-superadmin/public;
+    index index.php;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+
+    charset utf-8;
+    client_max_body_size 50M;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/var/run/php/php8.1-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+</pre>
+
+<h3>6.4 Enable all sites</h3>
+<pre>
+sudo ln -s /etc/nginx/sites-available/bankos-admin /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/bankos-portal /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/bankos-superadmin /etc/nginx/sites-enabled/
+sudo rm /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl reload nginx
+</pre>
+
+<!-- PHASE 7 -->
+<div class="page-break"></div>
+<h1 id="phase7">8. Phase 7 &mdash; SSL Certificates (Free HTTPS)</h1>
+
+<h3>7.1 Point your domain first</h3>
+<p>Go to your domain registrar and add these <strong>A records</strong>:</p>
+
+<table>
+    <tr><th>Type</th><th>Name</th><th>Value</th></tr>
+    <tr><td>A</td><td>admin</td><td>YOUR_SERVER_IP</td></tr>
+    <tr><td>A</td><td>app</td><td>YOUR_SERVER_IP</td></tr>
+    <tr><td>A</td><td>super</td><td>YOUR_SERVER_IP</td></tr>
+</table>
+
+<p>Wait 5-10 minutes for DNS to propagate.</p>
+
+<h3>7.2 Install SSL</h3>
+<pre>
+sudo apt install -y certbot python3-certbot-nginx
+
+sudo certbot --nginx \
+  -d admin.yourdomain.com \
+  -d app.yourdomain.com \
+  -d super.yourdomain.com \
+  --non-interactive \
+  --agree-tos \
+  -m your@email.com
+</pre>
+
+<div class="note">
+    <strong>Note:</strong> Certbot auto-renews every 90 days &mdash; nothing else to do.
+</div>
+
+<!-- PHASE 8 -->
+<h1 id="phase8">9. Phase 8 &mdash; Queue Workers (Supervisor)</h1>
+
+<pre>
+sudo nano /etc/supervisor/conf.d/bankos.conf
+</pre>
+
+<p>Paste:</p>
+<pre>
+[program:bankos-admin-worker]
+process_name=%(program_name)s_%(process_num)02d
+command=php /var/www/bankos/artisan queue:work redis --sleep=3 --tries=3 --max-time=3600
+autostart=true
+autorestart=true
+user=www-data
+numprocs=2
+redirect_stderr=true
+stdout_logfile=/var/log/bankos-admin-worker.log
+
+[program:bankos-portal-worker]
+process_name=%(program_name)s_%(process_num)02d
+command=php /var/www/bankos-portal/artisan queue:work redis --sleep=3 --tries=3 --max-time=3600
+autostart=true
+autorestart=true
+user=www-data
+numprocs=1
+redirect_stderr=true
+stdout_logfile=/var/log/bankos-portal-worker.log
+</pre>
+
+<pre>
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl status
+</pre>
+
+<p>You should see the workers running.</p>
+
+<!-- PHASE 9 -->
+<div class="page-break"></div>
+<h1 id="phase9">10. Phase 9 &mdash; Database Migration</h1>
+
+<h3>Option A: Export from local PostgreSQL and import</h3>
+
+<h4>On your local Windows machine (in Laragon terminal):</h4>
+<pre>
+pg_dump -U postgres -h 127.0.0.1 -d bankos -F c -f bankos_backup.dump
+</pre>
+
+<p>Upload <code>bankos_backup.dump</code> to the server using FileZilla (put it in <code>/home/deploy/</code>).</p>
+
+<h4>On the server:</h4>
+<pre>
+sudo -u postgres pg_restore -d bankos -c --if-exists /home/deploy/bankos_backup.dump
+</pre>
+
+<h3>Option B: Fresh database (run migrations + seeders)</h3>
+<pre>
+cd /var/www/bankos
+php artisan migrate --force
+php artisan db:seed --force
+</pre>
+
+<!-- PHASE 10 -->
+<div class="page-break"></div>
+<h1 id="phase10">11. Phase 10 &mdash; Continuous Deployment</h1>
+
+<h3>10.1 Create deploy script on server</h3>
+<pre>
+nano /home/deploy/deploy-bankos.sh
+</pre>
+
+<p>Paste:</p>
+<pre>
+#!/bin/bash
+set -e
+
+echo "==============================="
+echo "Deploying bankOS Admin..."
+echo "==============================="
+cd /var/www/bankos
+git pull origin main
+composer install --no-dev --optimize-autoloader
+php artisan migrate --force
+php artisan config:cache
+php artisan route:cache
+php artisan view:clear
+npm ci &amp;&amp; npm run build
+sudo supervisorctl restart bankos-admin-worker:*
+
+echo "==============================="
+echo "Deploying bankOS Portal..."
+echo "==============================="
+cd /var/www/bankos-portal
+git pull origin main
+composer install --no-dev --optimize-autoloader
+php artisan migrate --force
+php artisan config:cache
+php artisan route:cache
+php artisan view:clear
+npm ci &amp;&amp; npm run build
+sudo supervisorctl restart bankos-portal-worker:*
+
+echo "==============================="
+echo "Deploying bankOS SuperAdmin..."
+echo "==============================="
+cd /var/www/bankos-superadmin
+git pull origin main
+composer install --no-dev --optimize-autoloader
+php artisan migrate --force
+php artisan config:cache
+php artisan route:cache
+php artisan view:clear
+
+echo "==============================="
+echo "ALL DEPLOYMENTS COMPLETE!"
+echo "==============================="
+</pre>
+
+<pre>
+chmod +x /home/deploy/deploy-bankos.sh
+</pre>
+
+<h3>10.2 How to deploy updates</h3>
+
+<p>Every time you push code changes locally:</p>
+
+<h4>Step 1: Push from your local machine</h4>
+<pre>
+cd "c:/laragon/www/antigravity codes/bankos"
+git add .
+git commit -m "your changes"
+git push origin main
+</pre>
+
+<h4>Step 2: SSH into server and deploy</h4>
+<pre>
+ssh deploy@YOUR_SERVER_IP
+bash /home/deploy/deploy-bankos.sh
+</pre>
+
+<p>That's it &mdash; your site is updated.</p>
+
+<h3>10.3 (Optional) Auto-deploy with GitHub Actions</h3>
+<p>If you want <strong>zero SSH</strong> after pushing, add this file to each repo at <code>.github/workflows/deploy.yml</code>:</p>
+
+<pre>
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: deploy
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: bash /home/deploy/deploy-bankos.sh
+</pre>
+
+<p>Add in each GitHub repo &rarr; <strong>Settings &rarr; Secrets &rarr; Actions</strong>:</p>
+<ul>
+    <li><code>SERVER_IP</code> = your Hetzner IP</li>
+    <li><code>SERVER_PASSWORD</code> = your deploy user's password</li>
+</ul>
+
+<div class="note">
+    <strong>Result:</strong> Now every <code>git push</code> auto-deploys. No SSH needed.
+</div>
+
+<!-- PHASE 11 -->
+<div class="page-break"></div>
+<h1 id="phase11">12. Phase 11 &mdash; Database Backups</h1>
+
+<div class="important">
+    <strong>Critical for a banking application!</strong> Never run without automated backups.
+</div>
+
+<h3>11.1 Automated daily backups</h3>
+<pre>
+sudo mkdir -p /var/backups/bankos
+sudo chown deploy:deploy /var/backups/bankos
+
+nano /home/deploy/backup-db.sh
+</pre>
+
+<p>Paste:</p>
+<pre>
+#!/bin/bash
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR="/var/backups/bankos"
+KEEP_DAYS=30
+
+# Create backup
+sudo -u postgres pg_dump -F c bankos > "$BACKUP_DIR/bankos_$TIMESTAMP.dump"
+
+# Delete backups older than 30 days
+find $BACKUP_DIR -name "*.dump" -mtime +$KEEP_DAYS -delete
+
+echo "Backup complete: bankos_$TIMESTAMP.dump"
+</pre>
+
+<pre>
+chmod +x /home/deploy/backup-db.sh
+</pre>
+
+<h3>11.2 Schedule it (runs every day at 2 AM)</h3>
+<pre>
+crontab -e
+</pre>
+
+<p>Add this line:</p>
+<pre>
+0 2 * * * /home/deploy/backup-db.sh >> /var/log/bankos-backup.log 2>&amp;1
+</pre>
+
+<!-- QUICK REFERENCE -->
+<div class="page-break"></div>
+<h1 id="reference">13. Quick Reference Card</h1>
+
+<div class="warning">
+    <strong>Save this somewhere safe!</strong> Fill in the blanks during setup.
+</div>
+
+<table>
+    <tr><th style="width:40%">Item</th><th>Value</th></tr>
+    <tr><td>Server IP</td><td style="border-bottom: 1px dotted #999;">&nbsp;</td></tr>
+    <tr><td>Root Password</td><td style="border-bottom: 1px dotted #999;">&nbsp;</td></tr>
+    <tr><td>Deploy User Password</td><td style="border-bottom: 1px dotted #999;">&nbsp;</td></tr>
+    <tr><td>Database Password</td><td style="border-bottom: 1px dotted #999;">&nbsp;</td></tr>
+    <tr><td>GitHub Personal Access Token</td><td style="border-bottom: 1px dotted #999;">&nbsp;</td></tr>
+    <tr><td>Brevo SMTP Key</td><td style="border-bottom: 1px dotted #999;">&nbsp;</td></tr>
+    <tr><td>Domain Name</td><td style="border-bottom: 1px dotted #999;">&nbsp;</td></tr>
+</table>
+
+<br>
+
+<h3>Common Commands</h3>
+<table>
+    <tr><th>Task</th><th>Command</th></tr>
+    <tr><td>SSH Login</td><td><code>ssh deploy@YOUR_SERVER_IP</code></td></tr>
+    <tr><td>Deploy All Updates</td><td><code>bash /home/deploy/deploy-bankos.sh</code></td></tr>
+    <tr><td>Check Admin Logs</td><td><code>tail -f /var/www/bankos/storage/logs/laravel.log</code></td></tr>
+    <tr><td>Check Portal Logs</td><td><code>tail -f /var/www/bankos-portal/storage/logs/laravel.log</code></td></tr>
+    <tr><td>Restart PHP</td><td><code>sudo systemctl restart php8.1-fpm</code></td></tr>
+    <tr><td>Restart Nginx</td><td><code>sudo systemctl restart nginx</code></td></tr>
+    <tr><td>Restart Queue Workers</td><td><code>sudo supervisorctl restart all</code></td></tr>
+    <tr><td>Manual DB Backup</td><td><code>bash /home/deploy/backup-db.sh</code></td></tr>
+    <tr><td>PostgreSQL CLI</td><td><code>sudo -u postgres psql bankos</code></td></tr>
+</table>
+
+<br>
+
+<h3>Live URLs</h3>
+<table>
+    <tr><th>Application</th><th>URL</th></tr>
+    <tr><td>Admin Portal</td><td>https://admin.yourdomain.com</td></tr>
+    <tr><td>Customer Portal</td><td>https://app.yourdomain.com</td></tr>
+    <tr><td>Super Admin</td><td>https://super.yourdomain.com</td></tr>
+</table>
+
+<br>
+<br>
+
+<div class="note">
+    <strong>Total setup time:</strong> ~1-2 hours<br>
+    <strong>Total monthly cost:</strong> ~$10<br>
+    <strong>Result:</strong> All 3 apps running on one server with SSL, auto-backups, and push-to-deploy.
+</div>
+
+</body>
+</html>

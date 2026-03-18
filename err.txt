@@ -1,0 +1,1 @@
+SQLSTATE[42S21]: Column already exists: 1060 Duplicate column name 'tenant_id' (Connection: mysql, SQL: alter table `roles` add `tenant_id` bigint unsigned null after `id`)

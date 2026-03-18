@@ -1,0 +1,90 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply bg-bankos-bg text-bankos-text font-sans antialiased;
+    }
+
+    .dark body {
+        @apply bg-bankos-dark-bg text-bankos-dark-text;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+        @apply bg-transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+        @apply bg-bankos-border rounded-full hover:bg-bankos-muted transition-colors;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+        @apply bg-bankos-dark-border hover:bg-bankos-muted;
+    }
+}
+
+@layer components {
+    /* Status Badges */
+    .badge {
+        @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    }
+    .badge-active {
+        @apply bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400;
+    }
+    .badge-pending {
+        @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400;
+    }
+    .badge-danger {
+        @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400;
+    }
+    .badge-dormant {
+        @apply bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400;
+    }
+
+    /* Cards */
+    .card {
+        @apply bg-bankos-surface border border-bankos-border rounded-xl shadow-sm;
+    }
+    .dark .card {
+        @apply bg-bankos-dark-surface border-bankos-dark-border shadow-none;
+    }
+
+    /* Inputs & Forms */
+    .input-field, .form-input, .form-select {
+        @apply block w-full rounded-md border-bankos-border shadow-sm focus:border-bankos-primary focus:ring focus:ring-bankos-primary focus:ring-opacity-50 sm:text-sm;
+    }
+    .dark .input-field, .dark .form-input, .dark .form-select {
+        @apply bg-bankos-dark-bg border-bankos-dark-border text-white focus:border-bankos-primary focus:ring-bankos-primary;
+    }
+    
+    .form-label {
+        @apply block text-sm font-medium text-bankos-text-sec mb-1.5;
+    }
+    .dark .form-label {
+        @apply text-bankos-dark-text-sec;
+    }
+
+    .form-hint {
+        @apply text-xs text-bankos-muted mt-1 block;
+    }
+
+    /* Buttons */
+    .btn {
+        @apply inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors;
+    }
+    .btn-primary {
+        @apply text-white bg-bankos-primary hover:bg-blue-700 focus:ring-bankos-primary;
+    }
+    .btn-secondary {
+        @apply text-gray-800 bg-gray-200 border border-gray-300 hover:bg-gray-300 focus:ring-bankos-primary;
+    }
+    .dark .btn-secondary {
+        @apply bg-bankos-dark-surface text-white border-bankos-dark-border hover:bg-bankos-dark-bg;
+    }
+}
