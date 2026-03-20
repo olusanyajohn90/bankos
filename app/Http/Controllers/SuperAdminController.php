@@ -126,7 +126,7 @@ class SuperAdminController extends Controller
         // Customers
         $customers = DB::table('customers')->where('tenant_id', $tenantId);
         $totalCustomers   = $customers->count();
-        $portalActive     = (clone $customers)->where('portal_active', 1)->count();
+        $portalActive     = (clone $customers)->where('portal_active', true)->count();
         $kycVerified      = (clone $customers)->where('kyc_status', 'verified')->count();
 
         // Accounts / deposits
@@ -238,7 +238,7 @@ class SuperAdminController extends Controller
 
             // Customers
             $totalCustomers = DB::table('customers')->where('tenant_id', $tid)->count();
-            $portalActive   = DB::table('customers')->where('tenant_id', $tid)->where('portal_active', 1)->count();
+            $portalActive   = DB::table('customers')->where('tenant_id', $tid)->where('portal_active', true)->count();
             $kycVerified    = DB::table('customers')->where('tenant_id', $tid)->where('kyc_status', 'verified')->count();
 
             // Deposits

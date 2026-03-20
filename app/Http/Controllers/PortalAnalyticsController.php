@@ -59,7 +59,7 @@ class PortalAnalyticsController extends Controller
 
         $portalActive = DB::table('customers')
             ->where('tenant_id', $tenantId)
-            ->where('portal_active', 1)
+            ->where('portal_active', true)
             ->count();
 
         $portalActivationRate = $totalCustomers > 0
@@ -359,7 +359,7 @@ class PortalAnalyticsController extends Controller
 
             $totalCustomers = DB::table('customers')->where('tenant_id', $tenantId)->where('status', 'active')->count();
             $newCustomers   = DB::table('customers')->where('tenant_id', $tenantId)->whereBetween('created_at', [$from, $to])->count();
-            $portalActive   = DB::table('customers')->where('tenant_id', $tenantId)->where('portal_active', 1)->count();
+            $portalActive   = DB::table('customers')->where('tenant_id', $tenantId)->where('portal_active', true)->count();
             $activationRate = $totalCustomers > 0 ? round(($portalActive / $totalCustomers) * 100, 1) : 0;
             $kycPending     = DB::table('customers')->where('tenant_id', $tenantId)->where('kyc_status', 'manual_review')->count();
 

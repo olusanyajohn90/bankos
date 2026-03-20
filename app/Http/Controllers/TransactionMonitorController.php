@@ -97,9 +97,11 @@ class TransactionMonitorController extends Controller
             $account = $transaction->account;
             if ($account) {
                 if ($transaction->type === 'credit') {
-                    $account->decrement('balance', $transaction->amount);
+                    $account->decrement('available_balance', $transaction->amount);
+                    $account->decrement('ledger_balance', $transaction->amount);
                 } else {
-                    $account->increment('balance', $transaction->amount);
+                    $account->increment('available_balance', $transaction->amount);
+                    $account->increment('ledger_balance', $transaction->amount);
                 }
             }
 
