@@ -953,9 +953,7 @@ Route::post('api/nip/callback', [NipController::class, 'callback'])->name('nip.c
 // USSD endpoint (public — Africa's Talking POST callback)
 Route::post('ussd', [UssdController::class, 'handle'])->name('ussd.handle');
 
-// 2FA challenge routes (outside auth middleware since user isn't logged in yet)
-Route::get('two-factor/challenge', [\App\Http\Controllers\TwoFactorController::class, 'challenge'])->name('two-factor.challenge');
-Route::post('two-factor/verify', [\App\Http\Controllers\TwoFactorController::class, 'verify'])->name('two-factor.verify');
+// 2FA challenge routes are in routes/auth.php
 
 // 2FA profile management (authenticated)
 Route::middleware(['auth'])->group(function () {
