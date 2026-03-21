@@ -213,7 +213,7 @@ class WorkflowController extends Controller
     private function handleKyc(Customer $customer, string $action, ?string $notes, $actor): void
     {
         if ($action === 'approve') {
-            $customer->update(['kyc_status' => 'approved', 'kyc_tier' => $customer->kyc_tier ?? 1, 'status' => 'active']);
+            $customer->update(['kyc_status' => 'approved', 'kyc_tier' => $customer->kyc_tier ?? 'level_1', 'status' => 'active']);
         } else {
             $customer->update(['kyc_status' => 'rejected', 'status' => 'inactive']);
         }

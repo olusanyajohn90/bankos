@@ -606,9 +606,9 @@ class ReportController extends Controller
         $customers = \App\Models\Customer::all();
 
         $tierDist = [
-            1 => $customers->where('kyc_tier', 1)->count(),
-            2 => $customers->where('kyc_tier', 2)->count(),
-            3 => $customers->where('kyc_tier', 3)->count(),
+            'level_1' => $customers->where('kyc_tier', 'level_1')->count(),
+            'level_2' => $customers->where('kyc_tier', 'level_2')->count(),
+            'level_3' => $customers->where('kyc_tier', 'level_3')->count(),
         ];
 
         $statusDist = [

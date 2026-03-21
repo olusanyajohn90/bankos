@@ -376,11 +376,12 @@ class CreditPolicyService
                 if (!$customer) {
                     return ['passed' => false, 'actual' => null, 'detail' => 'Customer record not found'];
                 }
-                $kycTier = (int) ($customer->kyc_tier ?? 0);
+                $tierMap = ['level_1' => 1, 'level_2' => 2, 'level_3' => 3];
+                $kycTier = $tierMap[$customer->kyc_tier ?? 'level_1'] ?? 0;
                 return [
                     'passed' => $kycTier >= $threshold,
-                    'actual' => $kycTier,
-                    'detail' => "KYC tier: {$kycTier} vs minimum {$threshold}",
+                    'actual' => $customer->kyc_tier,
+                    'detail' => "KYC tier: {$customer->kyc_tier} vs minimum {$threshold}",
                 ];
 
             default:

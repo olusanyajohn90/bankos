@@ -298,10 +298,10 @@ class CustomerController extends Controller
         } else {
             // approve / approve_t1 / approve_t2 / approve_t3
             $tier = match($action) {
-                'approve_t1' => 1,
-                'approve_t2' => 2,
-                'approve_t3' => 3,
-                default      => $customer->kyc_tier ?? 1,
+                'approve_t1' => 'level_1',
+                'approve_t2' => 'level_2',
+                'approve_t3' => 'level_3',
+                default      => $customer->kyc_tier ?? 'level_1',
             };
             $customer->update([
                 'kyc_status' => 'approved',
