@@ -302,11 +302,11 @@
             @foreach($staff as $user)
             <div class="flex items-center gap-3 p-3 rounded-lg bg-gray-50/60 dark:bg-bankos-dark-bg/30 border border-bankos-border dark:border-bankos-dark-border">
                 <div class="w-10 h-10 rounded-full bg-bankos-primary/10 text-bankos-primary flex items-center justify-center font-bold text-sm shrink-0">
-                    {{ strtoupper(substr($user->first_name ?? '', 0, 1) . substr($user->last_name ?? '', 0, 1)) }}
+                    {{ strtoupper(substr($user->name ?? '', 0, 1)) }}
                 </div>
                 <div class="min-w-0">
                     <p class="font-medium text-bankos-text text-sm truncate">
-                        {{ $user->first_name }} {{ $user->last_name }}
+                        {{ $user->name }}
                     </p>
                     @if($user->roles->isNotEmpty())
                         <p class="text-xs text-bankos-primary font-medium truncate">

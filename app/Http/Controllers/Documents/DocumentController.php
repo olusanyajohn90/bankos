@@ -120,7 +120,9 @@ class DocumentController extends Controller
         $documentableType = $request->query('documentable_type');
         $documentableId   = $request->query('documentable_id');
 
-        abort_unless($documentableType && $documentableId, 400, 'documentable_type and documentable_id are required.');
+        if (! $documentableType || ! $documentableId) {
+            return redirect()->back()->with('error', 'Please navigate to a specific customer, loan, or account to upload documents. Both documentable_type and documentable_id are required.');
+        }
 
         $entityTypeMap = [
             'App\Models\Customer'     => 'customer',

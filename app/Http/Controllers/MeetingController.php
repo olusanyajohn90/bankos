@@ -22,7 +22,7 @@ class MeetingController extends Controller
 
     public function create(Group $group)
     {
-        $loanOfficers = User::role(['loan_officer', 'tenant_admin'])->orderBy('first_name')->get();
+        $loanOfficers = User::role(['loan_officer', 'tenant_admin'])->orderBy('name')->get();
         return view('meetings.create', compact('group', 'loanOfficers'));
     }
 

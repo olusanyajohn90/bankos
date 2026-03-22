@@ -76,7 +76,7 @@ class LoanApplicationReviewController extends Controller
             ->whereIn('status', ['active', 'overdue'])->get();
         $accounts = Account::where('customer_id', $app->customer_uuid)
             ->where('status', 'active')->get();
-        $loanProducts = LoanProduct::where('is_active', true)->get();
+        $loanProducts = LoanProduct::where('status', 'active')->get();
 
         return view('loan-applications.show', compact('app', 'customer', 'activeLoans', 'accounts', 'loanProducts'));
     }

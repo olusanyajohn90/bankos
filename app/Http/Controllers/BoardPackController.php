@@ -189,7 +189,7 @@ class BoardPackController extends Controller
                 ->where('loans.tenant_id', $tenantId)
                 ->whereIn('loans.status', ['active', 'overdue'])
                 ->leftJoin('loan_products', 'loans.product_id', '=', 'loan_products.id')
-                ->selectRaw('COALESCE(loan_products.name, "Unknown") as product_name, COUNT(*) as count, SUM(loans.outstanding_balance) as total')
+                ->selectRaw("COALESCE(loan_products.name, 'Unknown') as product_name, COUNT(*) as count, SUM(loans.outstanding_balance) as total")
                 ->groupBy('loan_products.name')
                 ->get();
         }

@@ -468,7 +468,7 @@ class ReportController extends Controller
             ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where('status', 'success')
             ->groupBy('account_id', 'txn_date')
-            ->having('txn_count', '>=', 10)
+            ->havingRaw('COUNT(*) >= 10')
             ->get();
 
         return view('reports.suspicious_activity', compact(
@@ -725,19 +725,21 @@ class ReportController extends Controller
         $startDate = $request->input('start_date', now()->subDays(7)->format('Y-m-d'));
         $endDate   = $request->input('end_date', now()->format('Y-m-d'));
 
-        $workflowActivity = \App\Models\WorkflowInstance::with('actionedBy')
-            ->whereNotNull('actioned_by')
-            ->whereBetween('updated_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->whereIn('status', ['approved', 'rejected'])
+        // Derive staff activity from workflow comments (workflow_instances has no actioned_by column)
+        $workflowActivity = \App\Models\WorkflowComment::with('user')
+            ->whereIn('action', ['approve', 'reject'])
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->get()
-            ->groupBy('actioned_by')
-            ->map(function ($instances) {
-                $user = $instances->first()->actionedBy;
+            ->groupBy('user_id')
+            ->map(function ($comments) {
+                $user = $comments->first()->user;
+                $instanceIds = $comments->pluck('workflow_instance_id')->unique();
+                $instances = \App\Models\WorkflowInstance::whereIn('id', $instanceIds)->get();
                 return [
                     'user'      => $user,
-                    'approved'  => $instances->where('status', 'approved')->count(),
-                    'rejected'  => $instances->where('status', 'rejected')->count(),
-                    'total'     => $instances->count(),
+                    'approved'  => $comments->where('action', 'approve')->count(),
+                    'rejected'  => $comments->where('action', 'reject')->count(),
+                    'total'     => $comments->count(),
                     'processes' => $instances->pluck('process_name')->unique()->values(),
                 ];
             })->sortByDesc('total')->values();

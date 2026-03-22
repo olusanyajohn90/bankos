@@ -47,7 +47,7 @@ class KpiTargetController extends Controller
         $data = $request->validate([
             'kpi_id'             => 'required|exists:kpi_definitions,id',
             'target_type'        => 'required|in:individual,team,branch,department,tenant',
-            'target_ref_id'      => 'nullable|uuid',
+            'target_ref_id'      => 'nullable|string',
             'department'         => 'nullable|string|max:50',
             'period_type'        => 'required|in:monthly,quarterly,yearly',
             'period_value'       => 'required|string|max:10',
@@ -82,7 +82,7 @@ class KpiTargetController extends Controller
         $request->validate([
             'targets'              => 'required|array',
             'targets.*.kpi_id'     => 'required|exists:kpi_definitions,id',
-            'targets.*.ref_id'     => 'required|uuid',
+            'targets.*.ref_id'     => 'required|string',
             'targets.*.target_type'=> 'required|in:individual,team,branch',
             'targets.*.value'      => 'required|numeric|min:0',
             'period_type'          => 'required|in:monthly,quarterly,yearly',

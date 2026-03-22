@@ -53,7 +53,7 @@
                     <option value="">— Not assigned —</option>
                     @foreach($loanOfficers as $officer)
                         <option value="{{ $officer->id }}" {{ old('loan_officer_id') == $officer->id ? 'selected' : '' }}>
-                            {{ $officer->first_name }} {{ $officer->last_name }}
+                            {{ $officer->name }}
                         </option>
                     @endforeach
                 </select>

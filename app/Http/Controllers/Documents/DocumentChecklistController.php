@@ -12,7 +12,15 @@ class DocumentChecklistController extends Controller
     {
         $checklists = CbnDocumentChecklist::orderBy('entity_type')->orderBy('sort_order')->get();
 
+        $entityTypes = ['customer', 'loan', 'account', 'staff_profile', 'branch'];
         $grouped = $checklists->groupBy('entity_type');
+
+        // Ensure all entity type keys exist so blade views can safely use array access
+        foreach ($entityTypes as $et) {
+            if (! $grouped->has($et)) {
+                $grouped[$et] = collect();
+            }
+        }
 
         return view('documents.checklist.index', compact('checklists', 'grouped'));
     }

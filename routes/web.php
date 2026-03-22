@@ -110,6 +110,18 @@ Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'ind
     ->name('dashboard');
 
 Route::middleware(['auth', 'tenant'])->group(function () {
+    // Internal API for AJAX calls (customer accounts dropdown)
+    Route::get('/api/internal/customer-accounts/{customerId}', function ($customerId) {
+        $tenantId = auth()->user()->tenant_id;
+        $accounts = \DB::table('accounts')
+            ->where('customer_id', $customerId)
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->select('id', 'account_number', 'available_balance', 'type')
+            ->get();
+        return response()->json($accounts);
+    });
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -655,14 +667,16 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     // ── COMMS MODULE ──────────────────────────────────────────────────────────
     Route::prefix('comms')->name('comms.')->group(function () {
         // Outbox (compose & sent)
-        Route::get('/', [CommsMessageController::class, 'index'])->name('index');
-        Route::get('/compose', [CommsMessageController::class, 'create'])->name('create');
-        Route::post('/', [CommsMessageController::class, 'store'])->name('store');
-        Route::get('/{commsMessage}/edit', [CommsMessageController::class, 'edit'])->name('edit');
-        Route::patch('/{commsMessage}', [CommsMessageController::class, 'update'])->name('update');
-        Route::post('/{commsMessage}/publish', [CommsMessageController::class, 'publish'])->name('publish');
-        Route::post('/{commsMessage}/archive', [CommsMessageController::class, 'archive'])->name('archive');
-        Route::get('/{commsMessage}/recipients', [CommsMessageController::class, 'recipients'])->name('recipients');
+        Route::prefix('messages')->name('messages.')->group(function () {
+            Route::get('/', [CommsMessageController::class, 'index'])->name('index');
+            Route::get('/compose', [CommsMessageController::class, 'create'])->name('create');
+            Route::post('/', [CommsMessageController::class, 'store'])->name('store');
+            Route::get('/{commsMessage}/edit', [CommsMessageController::class, 'edit'])->name('edit');
+            Route::patch('/{commsMessage}', [CommsMessageController::class, 'update'])->name('update');
+            Route::post('/{commsMessage}/publish', [CommsMessageController::class, 'publish'])->name('publish');
+            Route::post('/{commsMessage}/archive', [CommsMessageController::class, 'archive'])->name('archive');
+            Route::get('/{commsMessage}/recipients', [CommsMessageController::class, 'recipients'])->name('recipients');
+        });
 
         // Inbox
         Route::get('/inbox', [CommsInboxController::class, 'index'])->name('inbox.index');
@@ -901,6 +915,56 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     // ── IP WHITELIST ──────────────────────────────────────────────────────────
     Route::resource('ip-whitelist', IpWhitelistController::class)->only(['index', 'store', 'destroy']);
     Route::patch('ip-whitelist/{id}/toggle', [IpWhitelistController::class, 'toggle'])->name('ip-whitelist.toggle');
+
+    // ── COOPERATIVE SHARES ────────────────────────────────────────────────────
+    Route::prefix('cooperative/shares')->name('cooperative.shares.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Cooperative\ShareController::class, 'index'])->name('index');
+        Route::get('/products/create', [\App\Http\Controllers\Cooperative\ShareController::class, 'createProduct'])->name('products.create');
+        Route::post('/products', [\App\Http\Controllers\Cooperative\ShareController::class, 'storeProduct'])->name('products.store');
+        Route::get('/products/{id}', [\App\Http\Controllers\Cooperative\ShareController::class, 'showProduct'])->name('products.show');
+        Route::get('/members', [\App\Http\Controllers\Cooperative\ShareController::class, 'members'])->name('members');
+        Route::get('/members/{customerId}', [\App\Http\Controllers\Cooperative\ShareController::class, 'showMember'])->name('members.show');
+        Route::get('/purchase', [\App\Http\Controllers\Cooperative\ShareController::class, 'purchaseForm'])->name('purchase');
+        Route::post('/purchase', [\App\Http\Controllers\Cooperative\ShareController::class, 'purchase'])->name('purchase.store');
+        Route::get('/redeem', [\App\Http\Controllers\Cooperative\ShareController::class, 'redeemForm'])->name('redeem');
+        Route::post('/redeem', [\App\Http\Controllers\Cooperative\ShareController::class, 'redeem'])->name('redeem.store');
+        Route::get('/certificate/{memberShareId}', [\App\Http\Controllers\Cooperative\ShareController::class, 'certificate'])->name('certificate');
+    });
+
+    // ── COOPERATIVE DIVIDENDS ──────────────────────────────────────────────────
+    Route::prefix('cooperative/dividends')->name('cooperative.dividends.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Cooperative\DividendController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\Cooperative\DividendController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\Cooperative\DividendController::class, 'store'])->name('store');
+        Route::get('/{id}', [\App\Http\Controllers\Cooperative\DividendController::class, 'show'])->name('show');
+        Route::post('/{id}/approve', [\App\Http\Controllers\Cooperative\DividendController::class, 'approve'])->name('approve');
+        Route::post('/{id}/process', [\App\Http\Controllers\Cooperative\DividendController::class, 'process'])->name('process');
+        Route::post('/{id}/cancel', [\App\Http\Controllers\Cooperative\DividendController::class, 'cancel'])->name('cancel');
+    });
+
+    // ── COOPERATIVE CONTRIBUTIONS ─────────────────────────────────────────────
+    Route::prefix('cooperative/contributions')->name('cooperative.contributions.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Cooperative\ContributionController::class, 'index'])->name('index');
+        Route::get('/schedules/create', [\App\Http\Controllers\Cooperative\ContributionController::class, 'createSchedule'])->name('schedules.create');
+        Route::post('/schedules', [\App\Http\Controllers\Cooperative\ContributionController::class, 'storeSchedule'])->name('schedules.store');
+        Route::get('/schedules/{id}', [\App\Http\Controllers\Cooperative\ContributionController::class, 'showSchedule'])->name('schedules.show');
+        Route::get('/collect', [\App\Http\Controllers\Cooperative\ContributionController::class, 'collect'])->name('collect');
+        Route::post('/collect', [\App\Http\Controllers\Cooperative\ContributionController::class, 'storeCollect'])->name('collect.store');
+        Route::get('/bulk-collect', [\App\Http\Controllers\Cooperative\ContributionController::class, 'bulkCollect'])->name('bulk-collect');
+        Route::post('/bulk-collect', [\App\Http\Controllers\Cooperative\ContributionController::class, 'storeBulkCollect'])->name('bulk-collect.store');
+        Route::get('/members/{customerId}', [\App\Http\Controllers\Cooperative\ContributionController::class, 'memberHistory'])->name('member-history');
+        Route::get('/report', [\App\Http\Controllers\Cooperative\ContributionController::class, 'report'])->name('report');
+    });
+
+    // ── COOPERATIVE MEMBER EXITS ──────────────────────────────────────────────
+    Route::prefix('cooperative/exits')->name('cooperative.exits.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Cooperative\MemberExitController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\Cooperative\MemberExitController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\Cooperative\MemberExitController::class, 'store'])->name('store');
+        Route::get('/{id}', [\App\Http\Controllers\Cooperative\MemberExitController::class, 'show'])->name('show');
+        Route::post('/{id}/approve', [\App\Http\Controllers\Cooperative\MemberExitController::class, 'approve'])->name('approve');
+        Route::post('/{id}/settle', [\App\Http\Controllers\Cooperative\MemberExitController::class, 'settle'])->name('settle');
+    });
 });
 
 // ── SUPER ADMIN — Platform Control Tower ─────────────────────────────────────

@@ -48,7 +48,7 @@
                 <h3 class="text-sm font-semibold text-bankos-text">Tier Distribution</h3>
             </div>
             <div class="divide-y divide-gray-100 dark:divide-gray-800">
-                @foreach([1 => ['label'=>'Tier 1 — Basic', 'limit'=>'₦50k/day', 'color'=>'text-slate-600 bg-slate-100'], 2 => ['label'=>'Tier 2 — Standard', 'limit'=>'₦200k/day', 'color'=>'text-blue-600 bg-blue-100'], 3 => ['label'=>'Tier 3 — Premium', 'limit'=>'Unlimited', 'color'=>'text-violet-600 bg-violet-100']] as $tier => $meta)
+                @foreach(['level_1' => ['label'=>'Tier 1 — Basic', 'limit'=>'₦50k/day', 'color'=>'text-slate-600 bg-slate-100'], 'level_2' => ['label'=>'Tier 2 — Standard', 'limit'=>'₦200k/day', 'color'=>'text-blue-600 bg-blue-100'], 'level_3' => ['label'=>'Tier 3 — Premium', 'limit'=>'Unlimited', 'color'=>'text-violet-600 bg-violet-100']] as $tier => $meta)
                 <div class="px-6 py-4 flex items-center justify-between">
                     <div>
                         <span class="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full {{ $meta['color'] }}">{{ $meta['label'] }}</span>

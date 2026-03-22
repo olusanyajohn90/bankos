@@ -50,7 +50,7 @@
                              <option value="">-- No Manager Assigned --</option>
                              @foreach($managers ?? [] as $manager)
                                 <option value="{{ $manager->id }}" {{ old('manager_id', $branch->manager_id ?? '') == $manager->id ? 'selected' : '' }}>
-                                    {{ $manager->first_name }} {{ $manager->last_name }}
+                                    {{ $manager->name }}
                                 </option>
                              @endforeach
                          </select>

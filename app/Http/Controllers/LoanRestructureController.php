@@ -47,7 +47,7 @@ class LoanRestructureController extends Controller
             'new_rate'             => $validated['new_rate'],
             'reason'               => $validated['reason'],
             'officer_notes'        => $validated['officer_notes'] ?? null,
-            'requested_by'         => auth()->id(),
+            'requested_by'         => null,
         ]);
 
         app(WorkflowService::class)->create('Loan Restructure', $restructure);

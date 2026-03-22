@@ -55,7 +55,7 @@ class DemoDataSeeder extends Seeder
                     'max_branches'             => $p['max_branches'],
                     'max_transactions_monthly' => $p['max_transactions_monthly'],
                     'features'                 => json_encode($p['features']),
-                    'is_active'                => 1,
+                    'is_active'                => true,
                     'updated_at'               => now(),
                 ]);
             } else {
@@ -70,7 +70,7 @@ class DemoDataSeeder extends Seeder
                     'max_branches'             => $p['max_branches'],
                     'max_transactions_monthly' => $p['max_transactions_monthly'],
                     'features'                 => json_encode($p['features']),
-                    'is_active'                => 1,
+                    'is_active'                => true,
                     'created_at'               => now(),
                     'updated_at'               => now(),
                 ]);
@@ -226,9 +226,9 @@ class DemoDataSeeder extends Seeder
                     'processing_fee'         => 1.0,
                     'insurance_fee'          => 0.5,
                     'grace_period'           => 3,
-                    'group_lending'          => $p['group'],
-                    'ai_assessment'          => 0,
-                    'early_repayment'        => 1,
+                    'group_lending'          => (bool) $p['group'],
+                    'ai_assessment'          => false,
+                    'early_repayment'        => true,
                     'early_repayment_penalty'=> 0,
                     'collateral_types'       => json_encode(['none','guarantor','asset']),
                     'status'                 => 'active',
@@ -290,7 +290,7 @@ class DemoDataSeeder extends Seeder
                 'date_of_birth'   => Carbon::now()->subYears(rand(22, 65))->subDays(rand(0, 364))->toDateString(),
                 'gender'          => $i % 2 === 0 ? 'male' : 'female',
                 'email'           => strtolower($firstName . '.' . $lastName . ($i + 1)) . '@gmail.com',
-                'portal_active'   => rand(0, 9) < 6 ? 1 : 0,
+                'portal_active'   => rand(0, 9) < 6,
                 'phone'           => '+2348' . rand(10000000, 99999999),
                 'occupation'      => $occupations[array_rand($occupations)],
                 'marital_status'  => ['single','married','married'][array_rand(['single','married','married'])],
@@ -302,13 +302,13 @@ class DemoDataSeeder extends Seeder
                 ]),
                 'bvn'             => '22' . rand(100000000, 999999999),
                 'nin'             => (string)rand(10000000000, 99999999999),
-                'bvn_verified'    => in_array($kycTier, ['level_2', 'level_3']) ? 1 : 0,
-                'nin_verified'    => $kycTier === 'level_3' ? 1 : 0,
+                'bvn_verified'    => in_array($kycTier, ['level_2', 'level_3']),
+                'nin_verified'    => $kycTier === 'level_3',
                 'kyc_tier'        => $kycTier,
                 'kyc_status'      => in_array($kycTier, ['level_2', 'level_3']) ? 'approved' : (rand(0, 3) > 0 ? 'approved' : 'manual_review'),
                 'status'          => 'active',
-                'notify_sms'      => 1,
-                'notify_email'    => 1,
+                'notify_sms'      => true,
+                'notify_email'    => true,
                 'referral_code'   => strtoupper(Str::random(8)),
                 'created_at'      => Carbon::now()->subMonths(rand(1, 18))->subDays(rand(0, 28)),
                 'updated_at'      => now(),
@@ -533,21 +533,21 @@ class DemoDataSeeder extends Seeder
 
         $rules = [
             // rule_type enum: velocity, amount_threshold, structuring, round_amount, dormancy_reactivation
-            ['rule_code'=>'LARGE_AMT',   'rule_name'=>'Large Cash Transaction (₦5m+)',  'rule_type'=>'amount_threshold',      'threshold_amount'=>5000000,  'threshold_count'=>null,'time_window_hours'=>null,'severity'=>'high',    'auto_block'=>0],
-            ['rule_code'=>'VERY_LARGE',  'rule_name'=>'CTR — Very Large Transaction',   'rule_type'=>'amount_threshold',      'threshold_amount'=>25000000, 'threshold_count'=>null,'time_window_hours'=>null,'severity'=>'critical','auto_block'=>1],
-            ['rule_code'=>'ROUND_AMT',   'rule_name'=>'Round Amount Structuring',       'rule_type'=>'round_amount',          'threshold_amount'=>1000000,  'threshold_count'=>null,'time_window_hours'=>null,'severity'=>'medium',  'auto_block'=>0],
-            ['rule_code'=>'VELOCITY_HR', 'rule_name'=>'Hourly Velocity Check',          'rule_type'=>'velocity',              'threshold_amount'=>null,     'threshold_count'=>10,  'time_window_hours'=>1,   'severity'=>'high',    'auto_block'=>0],
-            ['rule_code'=>'VELOCITY_DAY','rule_name'=>'Daily Velocity Check',           'rule_type'=>'velocity',              'threshold_amount'=>null,     'threshold_count'=>25,  'time_window_hours'=>24,  'severity'=>'medium',  'auto_block'=>0],
-            ['rule_code'=>'STRUCTURING', 'rule_name'=>'Structuring Detection (NFIU)',   'rule_type'=>'structuring',           'threshold_amount'=>4900000,  'threshold_count'=>3,   'time_window_hours'=>24,  'severity'=>'critical','auto_block'=>0],
-            ['rule_code'=>'DORMANT_ACT', 'rule_name'=>'Dormant Account Reactivation',  'rule_type'=>'dormancy_reactivation', 'threshold_amount'=>100000,   'threshold_count'=>null,'time_window_hours'=>null,'severity'=>'medium',  'auto_block'=>0],
-            ['rule_code'=>'RAPID_MOV',   'rule_name'=>'Rapid Fund Movement',            'rule_type'=>'velocity',              'threshold_amount'=>2000000,  'threshold_count'=>5,   'time_window_hours'=>2,   'severity'=>'high',    'auto_block'=>0],
+            ['rule_code'=>'LARGE_AMT',   'rule_name'=>'Large Cash Transaction (₦5m+)',  'rule_type'=>'amount_threshold',      'threshold_amount'=>5000000,  'threshold_count'=>null,'time_window_hours'=>null,'severity'=>'high',    'auto_block'=>false],
+            ['rule_code'=>'VERY_LARGE',  'rule_name'=>'CTR — Very Large Transaction',   'rule_type'=>'amount_threshold',      'threshold_amount'=>25000000, 'threshold_count'=>null,'time_window_hours'=>null,'severity'=>'critical','auto_block'=>true],
+            ['rule_code'=>'ROUND_AMT',   'rule_name'=>'Round Amount Structuring',       'rule_type'=>'round_amount',          'threshold_amount'=>1000000,  'threshold_count'=>null,'time_window_hours'=>null,'severity'=>'medium',  'auto_block'=>false],
+            ['rule_code'=>'VELOCITY_HR', 'rule_name'=>'Hourly Velocity Check',          'rule_type'=>'velocity',              'threshold_amount'=>null,     'threshold_count'=>10,  'time_window_hours'=>1,   'severity'=>'high',    'auto_block'=>false],
+            ['rule_code'=>'VELOCITY_DAY','rule_name'=>'Daily Velocity Check',           'rule_type'=>'velocity',              'threshold_amount'=>null,     'threshold_count'=>25,  'time_window_hours'=>24,  'severity'=>'medium',  'auto_block'=>false],
+            ['rule_code'=>'STRUCTURING', 'rule_name'=>'Structuring Detection (NFIU)',   'rule_type'=>'structuring',           'threshold_amount'=>4900000,  'threshold_count'=>3,   'time_window_hours'=>24,  'severity'=>'critical','auto_block'=>false],
+            ['rule_code'=>'DORMANT_ACT', 'rule_name'=>'Dormant Account Reactivation',  'rule_type'=>'dormancy_reactivation', 'threshold_amount'=>100000,   'threshold_count'=>null,'time_window_hours'=>null,'severity'=>'medium',  'auto_block'=>false],
+            ['rule_code'=>'RAPID_MOV',   'rule_name'=>'Rapid Fund Movement',            'rule_type'=>'velocity',              'threshold_amount'=>2000000,  'threshold_count'=>5,   'time_window_hours'=>2,   'severity'=>'high',    'auto_block'=>false],
         ];
 
         foreach ($rules as $rule) {
             DB::table('aml_rules')->insert(array_merge($rule, [
                 'id'         => Str::uuid(),
                 'tenant_id'  => $this->tenantId,
-                'is_active'  => 1,
+                'is_active'  => true,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]));
@@ -619,8 +619,8 @@ class DemoDataSeeder extends Seeder
             DB::table('fee_rules')->insert(array_merge($rule, [
                 'id'         => Str::uuid(),
                 'tenant_id'  => $this->tenantId,
-                'is_active'  => 1,
-                'waivable'   => 1,
+                'is_active'  => true,
+                'waivable'   => true,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]));

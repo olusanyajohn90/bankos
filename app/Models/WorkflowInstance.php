@@ -22,12 +22,9 @@ class WorkflowInstance extends Model
         'assigned_role',
         'step',
         'total_steps',
-        'actioned_by',
-        'notes',
         'due_at',
         'started_at',
         'ended_at',
-        'metadata',
     ];
 
     protected $casts = [
@@ -49,9 +46,18 @@ class WorkflowInstance extends Model
         return $this->morphTo();
     }
 
-    public function actionedBy(): BelongsTo
+    /**
+     * Get the user who last actioned this workflow via the latest comment.
+     * The workflow_instances table does not have an actioned_by column.
+     */
+    public function getActionedByAttribute(): ?User
     {
-        return $this->belongsTo(User::class, 'actioned_by');
+        $comment = $this->comments()
+            ->whereIn('action', ['approve', 'reject'])
+            ->orderByDesc('created_at')
+            ->first();
+
+        return $comment ? User::find($comment->user_id) : null;
     }
 
     public function comments(): HasMany

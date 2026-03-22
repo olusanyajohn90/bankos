@@ -46,7 +46,7 @@ class KpiDashboardController extends Controller
             ->get();
 
         $notes = \App\Models\KpiNote::where('subject_type', 'user')
-            ->where('subject_id', $user->id)
+            ->where('subject_id', (string) $user->id)
             ->where('tenant_id', $tenantId)
             ->with(['author', 'kpiDefinition'])
             ->latest()

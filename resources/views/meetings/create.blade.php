@@ -38,7 +38,7 @@
                     <option value="">— Select officer —</option>
                     @foreach($loanOfficers as $officer)
                         <option value="{{ $officer->id }}" {{ old('conducted_by', $group->loan_officer_id) == $officer->id ? 'selected' : '' }}>
-                            {{ $officer->first_name }} {{ $officer->last_name }}
+                            {{ $officer->name }}
                         </option>
                     @endforeach
                 </select>

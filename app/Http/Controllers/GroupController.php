@@ -24,7 +24,7 @@ class GroupController extends Controller
     {
         $centres = Centre::where('status', 'active')->orderBy('name')->get();
         $branches = Branch::orderBy('name')->get();
-        $loanOfficers = User::role(['loan_officer', 'tenant_admin'])->orderBy('first_name')->get();
+        $loanOfficers = User::role(['loan_officer', 'tenant_admin'])->orderBy('name')->get();
         return view('groups.create', compact('centres', 'branches', 'loanOfficers'));
     }
 
@@ -71,7 +71,7 @@ class GroupController extends Controller
     {
         $centres = Centre::where('status', 'active')->orderBy('name')->get();
         $branches = Branch::orderBy('name')->get();
-        $loanOfficers = User::role(['loan_officer', 'tenant_admin'])->orderBy('first_name')->get();
+        $loanOfficers = User::role(['loan_officer', 'tenant_admin'])->orderBy('name')->get();
         return view('groups.edit', compact('group', 'centres', 'branches', 'loanOfficers'));
     }
 

@@ -39,7 +39,7 @@ class WorkflowController extends Controller
         $myPendingCount = $myTasks->count();
 
         // All Instances — filterable, paginated
-        $query = WorkflowInstance::with(['subject', 'actionedBy']);
+        $query = WorkflowInstance::with(['subject', 'comments.user']);
 
         if (request('process')) {
             $query->where('process_name', request('process'));
@@ -66,7 +66,7 @@ class WorkflowController extends Controller
 
     public function show(WorkflowInstance $workflow)
     {
-        $workflow->load(['subject', 'comments.user', 'actionedBy']);
+        $workflow->load(['subject', 'comments.user']);
 
         match ($workflow->subject_type) {
             Loan::class            => $workflow->subject?->load(['customer', 'loanProduct']),

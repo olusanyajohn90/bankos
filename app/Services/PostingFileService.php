@@ -8,6 +8,7 @@ use App\Models\Loan;
 use App\Models\PostingFile;
 use App\Models\PostingFileRecord;
 use App\Models\Transaction;
+use Carbon\Carbon;
 use Illuminate\Support\Str;
 
 class PostingFileService
@@ -57,6 +58,23 @@ class PostingFileService
             $error  = null;
             $status = 'valid';
 
+            // Parse transaction date — try DD/MM/YYYY first, then fall back to Carbon::parse
+            $parsedDate = null;
+            if ($txDate) {
+                try {
+                    $parsedDate = Carbon::createFromFormat('d/m/Y', $txDate);
+                } catch (\Throwable) {
+                    try {
+                        $parsedDate = Carbon::parse($txDate);
+                    } catch (\Throwable) {
+                        $parsedDate = null;
+                    }
+                }
+            }
+            if ($parsedDate) {
+                $txDate = $parsedDate->format('Y-m-d');
+            }
+
             // Duplicate detection within the same file
             $dedupKey = $identType . ':' . $identValue . ':' . $txDate;
             if (isset($seenIdentifiers[$dedupKey])) {
@@ -68,7 +86,7 @@ class PostingFileService
             } elseif ($amount <= 0) {
                 $error  = 'Amount must be greater than zero';
                 $status = 'invalid';
-            } elseif (!strtotime($txDate)) {
+            } elseif (!$parsedDate) {
                 $error  = 'Invalid transaction_date format';
                 $status = 'invalid';
             } else {

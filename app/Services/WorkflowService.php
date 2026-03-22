@@ -81,10 +81,8 @@ class WorkflowService
 
         if ($action === 'reject') {
             $instance->update([
-                'status'      => 'rejected',
-                'actioned_by' => $actor->id,
-                'notes'       => $notes,
-                'ended_at'    => now(),
+                'status'   => 'rejected',
+                'ended_at' => now(),
             ]);
             return true;
         }
@@ -110,10 +108,8 @@ class WorkflowService
 
         // Final step — fully approved
         $instance->update([
-            'status'      => 'approved',
-            'actioned_by' => $actor->id,
-            'notes'       => $notes,
-            'ended_at'    => now(),
+            'status'   => 'approved',
+            'ended_at' => now(),
         ]);
 
         return true;

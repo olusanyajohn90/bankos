@@ -27,7 +27,7 @@
                 <h2 class="text-sm font-semibold text-gray-700 mb-3">Account Details</h2>
                 <dl class="space-y-2 text-sm">
                     <div><dt class="text-xs text-gray-400">Account No.</dt><dd class="font-mono font-semibold text-gray-800">{{ $account->account_number }}</dd></div>
-                    <div><dt class="text-xs text-gray-400">Balance</dt><dd class="font-bold text-lg text-gray-900">₦{{ number_format($account->balance ?? 0, 2) }}</dd></div>
+                    <div><dt class="text-xs text-gray-400">Balance</dt><dd class="font-bold text-lg text-gray-900">₦{{ number_format($account->available_balance ?? 0, 2) }}</dd></div>
                     <div><dt class="text-xs text-gray-400">Product</dt><dd class="font-medium text-gray-800">{{ $account->product?->name ?? '—' }}</dd></div>
                     <div><dt class="text-xs text-gray-400">Branch</dt><dd class="font-medium text-gray-800">{{ $account->branch?->name ?? '—' }}</dd></div>
                     <div><dt class="text-xs text-gray-400">Opened</dt><dd class="text-gray-600">{{ $account->created_at?->format('d M Y') }}</dd></div>
