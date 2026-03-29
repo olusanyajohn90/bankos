@@ -154,13 +154,75 @@
                     Document Preview
                 </h3>
                 @if ($isPdf)
-                    <iframe src="{{ route('documents.download', $document) }}"
+                    <iframe src="{{ route('documents.preview', $document) }}"
                             class="w-full rounded-lg border border-bankos-border dark:border-bankos-dark-border"
                             style="height: 500px;" title="{{ $document->title }}"></iframe>
                 @elseif ($isImage)
-                    <img src="{{ route('documents.download', $document) }}"
+                    <img src="{{ route('documents.preview', $document) }}"
                          alt="{{ $document->title }}"
                          class="max-w-full rounded-lg border border-bankos-border dark:border-bankos-dark-border mx-auto block">
+                @elseif (in_array($document->mime_type, ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword']))
+                    {{-- Word Document Preview via Mammoth.js --}}
+                    <div id="docx-preview" class="prose prose-sm max-w-none p-6 bg-white dark:bg-bankos-dark-card rounded-lg border border-bankos-border dark:border-bankos-dark-border overflow-y-auto" style="height: 500px;">
+                        <div class="flex items-center justify-center py-12 text-bankos-muted">
+                            <svg class="animate-spin h-6 w-6 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                            Loading document preview...
+                        </div>
+                    </div>
+                    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+                    <script>
+                        fetch("{{ route('documents.preview', $document) }}")
+                            .then(r => r.arrayBuffer())
+                            .then(buffer => mammoth.convertToHtml({ arrayBuffer: buffer }))
+                            .then(result => {
+                                document.getElementById('docx-preview').innerHTML = result.value;
+                            })
+                            .catch(err => {
+                                document.getElementById('docx-preview').innerHTML = '<div class="text-center py-12 text-bankos-muted"><p class="font-medium">Could not render Word document</p><p class="text-xs mt-1">' + err.message + '</p><a href="{{ route('documents.download', $document) }}" class="mt-3 inline-block btn btn-secondary text-sm">Download to View</a></div>';
+                            });
+                    </script>
+                @elseif (in_array($document->mime_type, ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'text/csv']))
+                    {{-- Excel/CSV Preview via SheetJS --}}
+                    <div id="xlsx-preview" class="overflow-auto rounded-lg border border-bankos-border dark:border-bankos-dark-border" style="height: 500px;">
+                        <div class="flex items-center justify-center py-12 text-bankos-muted">
+                            <svg class="animate-spin h-6 w-6 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                            Loading spreadsheet preview...
+                        </div>
+                    </div>
+                    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+                    <script>
+                        fetch("{{ route('documents.preview', $document) }}")
+                            .then(r => r.arrayBuffer())
+                            .then(buffer => {
+                                const wb = XLSX.read(buffer, { type: 'array' });
+                                const ws = wb.Sheets[wb.SheetNames[0]];
+                                const html = XLSX.utils.sheet_to_html(ws, { editable: false });
+                                const container = document.getElementById('xlsx-preview');
+                                container.innerHTML = html;
+                                // Style the table
+                                const table = container.querySelector('table');
+                                if (table) {
+                                    table.className = 'w-full text-sm';
+                                    table.querySelectorAll('th, td').forEach(cell => {
+                                        cell.style.padding = '8px 12px';
+                                        cell.style.borderBottom = '1px solid #e2e8f0';
+                                        cell.style.textAlign = 'left';
+                                        cell.style.whiteSpace = 'nowrap';
+                                    });
+                                    table.querySelectorAll('th').forEach(th => {
+                                        th.style.background = '#f8fafc';
+                                        th.style.fontWeight = '600';
+                                        th.style.fontSize = '12px';
+                                        th.style.textTransform = 'uppercase';
+                                        th.style.letterSpacing = '0.5px';
+                                        th.style.color = '#64748b';
+                                    });
+                                }
+                            })
+                            .catch(err => {
+                                document.getElementById('xlsx-preview').innerHTML = '<div class="text-center py-12 text-bankos-muted"><p class="font-medium">Could not render spreadsheet</p><p class="text-xs mt-1">' + err.message + '</p><a href="{{ route('documents.download', $document) }}" class="mt-3 inline-block btn btn-secondary text-sm">Download to View</a></div>';
+                            });
+                    </script>
                 @else
                     <div class="flex flex-col items-center justify-center py-12 text-bankos-muted">
                         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="mb-3 text-bankos-border"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>

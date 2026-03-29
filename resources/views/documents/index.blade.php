@@ -229,7 +229,7 @@
     <div class="bg-white dark:bg-bankos-dark-surface rounded-xl shadow-xl w-full max-w-md mx-4 p-6" @click.outside="open = false">
         <h3 class="text-base font-semibold text-bankos-text dark:text-bankos-dark-text mb-1">Upload New Version</h3>
         <p class="text-xs text-bankos-text-sec mb-4">{{ $doc->title }}</p>
-        <form method="POST" action="{{ route('documents.new-version', $doc) }}" enctype="multipart/form-data">
+        <form method="POST" action="{{ route('documents.version', $doc) }}" enctype="multipart/form-data">
             @csrf
             <input type="file" name="file" required class="form-input w-full text-sm mb-4">
             <div class="flex gap-2 justify-end">

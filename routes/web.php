@@ -160,6 +160,8 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/reports/fee-charges-register', [\App\Http\Controllers\ReportController::class, 'feeChargesRegister'])->name('reports.fee-charges-register');
     Route::get('/reports/staff-activity-audit', [\App\Http\Controllers\ReportController::class, 'staffActivityAudit'])->name('reports.staff-activity-audit');
     Route::get('/reports/single-obligor-limit', [\App\Http\Controllers\ReportController::class, 'singleObligorLimit'])->name('reports.single-obligor-limit');
+    Route::get('/reports/loan-due-today', [\App\Http\Controllers\ReportController::class, 'loanDueToday'])->name('reports.loan-due-today');
+    Route::get('/reports/fixed-assets', [\App\Http\Controllers\ReportController::class, 'fixedAssets'])->name('reports.fixed-assets');
 
     // Custom Report Builder
     Route::prefix('custom-reports')->name('custom-reports.')->group(function () {
@@ -583,6 +585,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         // ── Wildcard {document} routes LAST ───────────────────────────────
         Route::get('/{document}', [DocumentController::class, 'show'])->name('show');
         Route::get('/{document}/download', [DocumentController::class, 'download'])->name('download');
+        Route::get('/{document}/preview', [DocumentController::class, 'preview'])->name('preview');
         Route::post('/{document}/version', [DocumentController::class, 'newVersion'])->name('version');
         Route::post('/{document}/review', [DocumentController::class, 'review'])->name('review');
         Route::delete('/{document}', [DocumentController::class, 'destroy'])->name('destroy');

@@ -241,6 +241,19 @@ class DocumentController extends Controller
         return \Storage::disk('local')->download($document->file_path, $document->file_name);
     }
 
+    public function preview(Request $request, Document $document)
+    {
+        $this->documentService->logAccess($document, auth()->user(), 'viewed', $request);
+
+        $path = \Storage::disk('local')->path($document->file_path);
+        $mime = \Storage::disk('local')->mimeType($document->file_path);
+
+        return response()->file($path, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="' . $document->file_name . '"',
+        ]);
+    }
+
     public function newVersion(Request $request, Document $document)
     {
         $request->validate([

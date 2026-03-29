@@ -841,4 +841,127 @@ class ReportController extends Controller
 
         return view('reports.branch_performance', compact('branchStats', 'date'));
     }
+
+    // ───────────────────────────────────────────────
+    // Loan Due Today by Account Officer
+    // ───────────────────────────────────────────────
+    public function loanDueToday(Request $request)
+    {
+        $tenantId = auth()->user()->tenant_id;
+        $date = $request->input('date', now()->format('Y-m-d'));
+        $officerFilter = $request->input('officer_id');
+
+        // Get all active/overdue loans for this tenant
+        $loansQuery = \App\Models\Loan::where('tenant_id', $tenantId)
+            ->whereIn('status', ['active', 'overdue'])
+            ->with(['customer', 'product']);
+
+        if ($officerFilter) {
+            $loansQuery->where('officer_id', $officerFilter);
+        }
+
+        $loans = $loansQuery->get();
+
+        // Calculate which loans have repayment due on the selected date
+        $dueLoans = $loans->filter(function ($loan) use ($date) {
+            if (!$loan->disbursed_at) return false;
+            $disbursed = \Carbon\Carbon::parse($loan->disbursed_at);
+            $targetDate = \Carbon\Carbon::parse($date);
+            $freq = $loan->repayment_frequency ?? 'monthly';
+
+            if ($freq === 'daily') return true;
+
+            if ($freq === 'weekly') {
+                return $disbursed->diffInDays($targetDate) % 7 === 0;
+            }
+
+            // Monthly: same day of month as disbursement
+            return $targetDate->day === $disbursed->day ||
+                   ($targetDate->isLastOfMonth() && $disbursed->day > $targetDate->daysInMonth);
+        });
+
+        // Calculate installment amounts
+        $dueLoans = $dueLoans->map(function ($loan) {
+            $months = max(1, $loan->tenure_days / 30);
+            if ($loan->interest_method === 'flat') {
+                $totalInterest = $loan->principal_amount * ($loan->interest_rate / 100) * ($months / 12);
+                $loan->installment_amount = ($loan->principal_amount + $totalInterest) / $months;
+            } else {
+                $monthlyRate = ($loan->interest_rate / 100) / 12;
+                if ($monthlyRate > 0) {
+                    $loan->installment_amount = $loan->principal_amount * ($monthlyRate * pow(1 + $monthlyRate, $months)) / (pow(1 + $monthlyRate, $months) - 1);
+                } else {
+                    $loan->installment_amount = $loan->principal_amount / $months;
+                }
+            }
+            return $loan;
+        });
+
+        // Group by officer
+        $officers = \App\Models\User::where('tenant_id', $tenantId)->get()->keyBy('id');
+        $byOfficer = $dueLoans->groupBy('officer_id');
+
+        // Summary stats
+        $totalDue = $dueLoans->sum('installment_amount');
+        $totalLoans = $dueLoans->count();
+        $totalOutstanding = $dueLoans->sum('outstanding_balance');
+        $overdueCount = $dueLoans->where('status', 'overdue')->count();
+
+        $allOfficers = \App\Models\User::where('tenant_id', $tenantId)
+            ->orderBy('name')->get();
+
+        return view('reports.loan_due_today', compact(
+            'dueLoans', 'byOfficer', 'officers', 'date', 'officerFilter',
+            'totalDue', 'totalLoans', 'totalOutstanding', 'overdueCount', 'allOfficers'
+        ));
+    }
+
+    // ───────────────────────────────────────────────
+    // Fixed Assets Report (Categorized)
+    // ───────────────────────────────────────────────
+    public function fixedAssets(Request $request)
+    {
+        $tenantId = auth()->user()->tenant_id;
+        $categoryFilter = $request->input('category');
+
+        $assetsQuery = \Illuminate\Support\Facades\DB::table('fixed_assets')
+            ->leftJoin('fixed_asset_categories', 'fixed_assets.category_id', '=', 'fixed_asset_categories.id')
+            ->where('fixed_assets.tenant_id', $tenantId)
+            ->select('fixed_assets.*', 'fixed_asset_categories.name as category_name');
+
+        if ($categoryFilter) {
+            $assetsQuery->where('fixed_assets.category_id', $categoryFilter);
+        }
+
+        $assets = $assetsQuery->orderBy('fixed_asset_categories.name')
+            ->orderBy('fixed_assets.name')->get();
+
+        // Group by category
+        $byCategory = $assets->groupBy('category_name');
+
+        // Summary per category
+        $categorySummary = $byCategory->map(function ($items, $cat) {
+            return [
+                'category' => $cat ?: 'Uncategorized',
+                'count' => $items->count(),
+                'total_cost' => $items->sum('purchase_cost'),
+                'total_depreciation' => $items->sum('accumulated_depreciation'),
+                'total_book_value' => $items->sum('current_book_value'),
+            ];
+        });
+
+        // Grand totals
+        $totalCost = $assets->sum('purchase_cost');
+        $totalDepreciation = $assets->sum('accumulated_depreciation');
+        $totalBookValue = $assets->sum('current_book_value');
+        $totalAssets = $assets->count();
+
+        $categories = \Illuminate\Support\Facades\DB::table('fixed_asset_categories')
+            ->where('tenant_id', $tenantId)->orderBy('name')->get();
+
+        return view('reports.fixed_assets', compact(
+            'assets', 'byCategory', 'categorySummary', 'categoryFilter',
+            'totalCost', 'totalDepreciation', 'totalBookValue', 'totalAssets', 'categories'
+        ));
+    }
 }

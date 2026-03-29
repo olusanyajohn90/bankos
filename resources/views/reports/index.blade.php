@@ -401,6 +401,40 @@
                 </div>
             </a>
 
+            {{-- Loan Due Today by Officer --}}
+            <a href="{{ route('reports.loan-due-today') }}" class="card hover:border-orange-500/50 transition-all hover:shadow-md group block h-full">
+                <div class="flex items-start gap-4">
+                    <div class="p-3 rounded-lg bg-orange-50 text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-bankos-text group-hover:text-orange-600 transition-colors">Loans Due Today by Officer</h4>
+                        <p class="text-sm text-bankos-text-sec mt-1 line-clamp-2">Daily view of loan repayments due, grouped by account officer — helps collections teams prioritise follow-ups.</p>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 text-xs font-semibold text-orange-600 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span>Generate Report</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </div>
+            </a>
+
+            {{-- Fixed Assets Register --}}
+            <a href="{{ route('reports.fixed-assets') }}" class="card hover:border-indigo-500/50 transition-all hover:shadow-md group block h-full">
+                <div class="flex items-start gap-4">
+                    <div class="p-3 rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-bankos-text group-hover:text-indigo-600 transition-colors">Fixed Assets Register</h4>
+                        <p class="text-sm text-bankos-text-sec mt-1 line-clamp-2">Full inventory of fixed assets grouped by category — cost, accumulated depreciation, net book value, and status.</p>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 text-xs font-semibold text-indigo-600 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span>Generate Report</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </div>
+            </a>
+
         </div>
     </div>
 </x-app-layout>
