@@ -43,7 +43,7 @@ class BankingProductsSeeder extends Seeder
         ];
 
         foreach ($products as $p) {
-            DB::table('fixed_deposit_products')->insert([
+            DB::table('fixed_deposit_products')->insertOrIgnore([
                 'id'                       => (string) Str::uuid(),
                 'tenant_id'                => $tenantId,
                 'name'                     => $p['name'],
@@ -85,7 +85,7 @@ class BankingProductsSeeder extends Seeder
             $maturity  = (clone $startDate)->addDays($product->min_tenure_days);
             $interest  = round($principal * ($product->interest_rate / 100) * ($product->min_tenure_days / 365), 2);
 
-            DB::table('fixed_deposits')->insert([
+            DB::table('fixed_deposits')->insertOrIgnore([
                 'id'               => (string) Str::uuid(),
                 'tenant_id'        => $tenantId,
                 'customer_id'      => $customer->id,
@@ -128,7 +128,7 @@ class BankingProductsSeeder extends Seeder
             $used    = rand(0, $leaves);
             $status  = $statuses[$i % count($statuses)];
 
-            DB::table('cheque_books')->insert([
+            DB::table('cheque_books')->insertOrIgnore([
                 'id'           => (string) Str::uuid(),
                 'tenant_id'    => $tenantId,
                 'account_id'   => $account->id,
@@ -165,7 +165,7 @@ class BankingProductsSeeder extends Seeder
             $account   = $accounts[$i % $accounts->count()];
             $startDate = now()->subMonths(rand(1, 6));
 
-            DB::table('standing_orders')->insert([
+            DB::table('standing_orders')->insertOrIgnore([
                 'id'                        => (string) Str::uuid(),
                 'tenant_id'                 => $tenantId,
                 'source_account_id'         => $account->id,
@@ -208,7 +208,7 @@ class BankingProductsSeeder extends Seeder
             $used     = round($limit * $usedPct[$i], 2);
             $approved = now()->subMonths(rand(1, 6));
 
-            DB::table('overdraft_facilities')->insert([
+            DB::table('overdraft_facilities')->insertOrIgnore([
                 'id'           => (string) Str::uuid(),
                 'tenant_id'    => $tenantId,
                 'account_id'   => $account->id,
@@ -240,7 +240,7 @@ class BankingProductsSeeder extends Seeder
         ];
 
         foreach ($products as $i => $p) {
-            DB::table('portal_investment_products')->insert([
+            DB::table('portal_investment_products')->insertOrIgnore([
                 'id'            => (string) Str::uuid(),
                 'tenant_id'     => $tenantId,
                 'name'          => $p['name'],
@@ -269,7 +269,7 @@ class BankingProductsSeeder extends Seeder
         ];
 
         foreach ($templates as $t) {
-            DB::table('card_templates')->insert([
+            DB::table('card_templates')->insertOrIgnore([
                 'id'                     => (string) Str::uuid(),
                 'tenant_id'              => $tenantId,
                 'name'                   => $t['name'],

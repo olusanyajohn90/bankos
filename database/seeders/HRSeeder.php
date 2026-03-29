@@ -771,7 +771,7 @@ class HRSeeder extends Seeder
                 'approved_at'          => in_array($status, ['approved','disbursed']) ? now()->subDays(rand(3, 14)) : null,
                 'rejection_reason'     => $status === 'rejected' ? 'Outstanding advance still being repaid.' : null,
                 'disbursed_at'         => $status === 'disbursed' ? now()->subDays(rand(1, 5)) : null,
-                'balance_remaining'    => $status === 'disbursed' ? $amount - round($amount / $months, 2) : null,
+                'balance_remaining'    => $status === 'disbursed' ? $amount - round($amount / $months, 2) : $amount,
                 'created_at'           => now()->subDays(rand(5, 20)),
                 'updated_at'           => now(),
             ]);

@@ -93,7 +93,7 @@ class DocumentsCommsSeeder extends Seeder
             $reviewerId = in_array($d['status'], ['approved', 'rejected']) ? $userIds[array_rand(array_slice($userIds, 0, 5))] : null;
             $reviewedAt = $reviewerId ? $now->copy()->subDays(rand(1, 30)) : null;
 
-            DB::table('documents')->insert([
+            DB::table('documents')->insertOrIgnore([
                 'id' => $docId,
                 'tenant_id' => $this->tenantId,
                 'folder_id' => $folderMap[$d['folder']] ?? null,
@@ -179,7 +179,7 @@ class DocumentsCommsSeeder extends Seeder
             $c['updated_at'] = $now;
         }
         unset($c);
-        DB::table('cbn_document_checklists')->insert($checklists);
+        DB::table('cbn_document_checklists')->insertOrIgnore($checklists);
 
         // ─── 5. DOCUMENT WORKFLOWS ──────────────────────────────────────
         $workflows = [
@@ -226,7 +226,7 @@ class DocumentsCommsSeeder extends Seeder
 
         $stepIds = [];
         foreach ($workflows as $wf) {
-            DB::table('document_workflows')->insert([
+            DB::table('document_workflows')->insertOrIgnore([
                 'id' => $wf['id'],
                 'tenant_id' => $this->tenantId,
                 'name' => $wf['name'],
@@ -241,7 +241,7 @@ class DocumentsCommsSeeder extends Seeder
             foreach ($wf['steps'] as $step) {
                 $stepId = Str::uuid()->toString();
                 $stepIds[$wf['id']][] = $stepId;
-                DB::table('document_workflow_steps')->insert([
+                DB::table('document_workflow_steps')->insertOrIgnore([
                     'id' => $stepId,
                     'workflow_id' => $wf['id'],
                     'step_order' => $step['step_order'],
@@ -262,7 +262,7 @@ class DocumentsCommsSeeder extends Seeder
         // Instance 1: Completed KYC workflow
         $wfKycId = $workflows[0]['id'];
         $inst1Id = Str::uuid()->toString();
-        DB::table('document_workflow_instances')->insert([
+        DB::table('document_workflow_instances')->insertOrIgnore([
             'id' => $inst1Id,
             'document_id' => $documentIds[0], // NIN slip approved
             'workflow_id' => $wfKycId,
@@ -277,7 +277,7 @@ class DocumentsCommsSeeder extends Seeder
         ]);
 
         foreach ($stepIds[$wfKycId] as $i => $sId) {
-            DB::table('document_workflow_actions')->insert([
+            DB::table('document_workflow_actions')->insertOrIgnore([
                 'id' => Str::uuid()->toString(),
                 'instance_id' => $inst1Id,
                 'step_id' => $sId,
@@ -295,7 +295,7 @@ class DocumentsCommsSeeder extends Seeder
         // Instance 2: In-progress loan workflow (step 2 of 4)
         $wfLoanId = $workflows[1]['id'];
         $inst2Id = Str::uuid()->toString();
-        DB::table('document_workflow_instances')->insert([
+        DB::table('document_workflow_instances')->insertOrIgnore([
             'id' => $inst2Id,
             'document_id' => $documentIds[5], // loan application
             'workflow_id' => $wfLoanId,
@@ -310,7 +310,7 @@ class DocumentsCommsSeeder extends Seeder
         ]);
 
         // Step 1 done, step 2 pending
-        DB::table('document_workflow_actions')->insert([
+        DB::table('document_workflow_actions')->insertOrIgnore([
             'id' => Str::uuid()->toString(),
             'instance_id' => $inst2Id,
             'step_id' => $stepIds[$wfLoanId][0],
@@ -323,7 +323,7 @@ class DocumentsCommsSeeder extends Seeder
             'created_at' => $now->copy()->subDays(5),
             'updated_at' => $now->copy()->subDays(3),
         ]);
-        DB::table('document_workflow_actions')->insert([
+        DB::table('document_workflow_actions')->insertOrIgnore([
             'id' => Str::uuid()->toString(),
             'instance_id' => $inst2Id,
             'step_id' => $stepIds[$wfLoanId][1],
@@ -340,7 +340,7 @@ class DocumentsCommsSeeder extends Seeder
         // Instance 3: Rejected legal document
         $wfLegalId = $workflows[2]['id'];
         $inst3Id = Str::uuid()->toString();
-        DB::table('document_workflow_instances')->insert([
+        DB::table('document_workflow_instances')->insertOrIgnore([
             'id' => $inst3Id,
             'document_id' => $documentIds[11], // board resolution
             'workflow_id' => $wfLegalId,
@@ -353,7 +353,7 @@ class DocumentsCommsSeeder extends Seeder
             'created_at' => $now->copy()->subDays(10),
             'updated_at' => $now->copy()->subDays(8),
         ]);
-        DB::table('document_workflow_actions')->insert([
+        DB::table('document_workflow_actions')->insertOrIgnore([
             'id' => Str::uuid()->toString(),
             'instance_id' => $inst3Id,
             'step_id' => $stepIds[$wfLegalId][0],
@@ -377,7 +377,7 @@ class DocumentsCommsSeeder extends Seeder
         ];
 
         foreach ($notes as $n) {
-            DB::table('document_notes')->insert([
+            DB::table('document_notes')->insertOrIgnore([
                 'id' => Str::uuid()->toString(),
                 'document_id' => $n['document_id'],
                 'author_id' => $n['author_id'],
@@ -525,7 +525,7 @@ class DocumentsCommsSeeder extends Seeder
         foreach ($chatMessageDefs as $m) {
             $msgId = Str::uuid()->toString();
             $chatMessageIds[] = $msgId;
-            DB::table('chat_messages')->insert([
+            DB::table('chat_messages')->insertOrIgnore([
                 'id' => $msgId,
                 'tenant_id' => $this->tenantId,
                 'conversation_id' => $conversations[$m['conv']]['id'],
@@ -653,7 +653,7 @@ class DocumentsCommsSeeder extends Seeder
         ];
 
         foreach ($commsMessages as $cm) {
-            DB::table('comms_messages')->insert([
+            DB::table('comms_messages')->insertOrIgnore([
                 'id' => $cm['id'],
                 'tenant_id' => $this->tenantId,
                 'type' => $cm['type'],
