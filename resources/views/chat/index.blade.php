@@ -2129,9 +2129,10 @@ function chatApp() {
         },
 
         filteredConversations() {
-            if (!this.convSearch.trim()) return this.conversations;
+            let convos = this.conversations.filter(c => c.type !== 'channel');
+            if (!this.convSearch.trim()) return convos;
             const q = this.convSearch.toLowerCase();
-            return this.conversations.filter(c =>
+            return convos.filter(c =>
                 c.display_name.toLowerCase().includes(q) ||
                 (c.last_message_preview ?? '').toLowerCase().includes(q)
             );
@@ -3117,7 +3118,7 @@ function chatApp() {
         // ── Channels ────────────────────────────────────────────────────────
         async loadChannels() {
             // Channels are conversations that are channels — filter from loaded convos or fetch separately
-            this.channels = this.conversations.filter(c => c.is_channel);
+            this.channels = this.conversations.filter(c => c.type === 'channel');
         },
 
         async loadBrowseChannels() {
