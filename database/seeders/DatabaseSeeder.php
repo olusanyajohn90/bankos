@@ -155,5 +155,8 @@ class DatabaseSeeder extends Seeder
 
         // 22. Cooperative module (dividends, contributions)
         $this->call(CooperativeSeeder::class);
+
+        // 23. Chat enhancements (channels, threads, polls, tasks, calls, canvas, etc.)
+        $this->call(ChatEnhancementsSeeder::class);
     }
 }
