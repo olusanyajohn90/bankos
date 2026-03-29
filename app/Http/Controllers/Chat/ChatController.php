@@ -672,7 +672,7 @@ class ChatController extends Controller
         $request->validate([
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string|max:2000',
-            'assigned_to' => 'required|exists:users,id',
+            'assigned_to' => 'nullable|exists:users,id',
             'priority'    => 'nullable|string|in:low,medium,high,urgent',
             'due_date'    => 'nullable|date',
         ]);
