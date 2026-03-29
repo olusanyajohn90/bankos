@@ -2350,6 +2350,13 @@ function chatApp() {
                 if (this.messages.length) {
                     this.lastMessageId = this.messages[this.messages.length - 1].id;
                 }
+                // Auto-unfurl links in loaded messages
+                this.messages.forEach(m => {
+                    if (m.body) {
+                        const urlMatch = m.body.match(/(https?:\/\/[^\s]+)/);
+                        if (urlMatch) this.unfurlLink(urlMatch[1], m.id);
+                    }
+                });
                 this.onSuccess();
                 this.scrollToBottom();
             } catch {
@@ -3568,8 +3575,9 @@ function chatApp() {
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    if (data.title || data.description) {
-                        this.unfurledLinks[msgId] = data;
+                    const unfurl = data.unfurl ?? data;
+                    if (unfurl.title || unfurl.description) {
+                        this.unfurledLinks[msgId] = unfurl;
                     }
                 }
             } catch {}
