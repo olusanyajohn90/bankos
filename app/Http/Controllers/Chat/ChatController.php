@@ -86,6 +86,11 @@ class ChatController extends Controller
                 'is_group'             => $conv->type === 'group',
                 'is_archived'          => (bool) $conv->is_archived,
                 'participant_count'    => $conv->participants->whereNull('left_at')->count(),
+                'participants'         => $conv->participants->whereNull('left_at')->map(fn($p) => [
+                    'id'   => $p->user_id,
+                    'name' => $p->user?->name ?? 'Unknown',
+                    'role' => $p->role,
+                ])->values()->all(),
             ];
         });
 

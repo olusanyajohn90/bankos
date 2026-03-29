@@ -480,7 +480,7 @@
                                                                         <span :class="{
                                                                             'bg-blue-100 text-blue-700': msg.task.status === 'pending',
                                                                             'bg-amber-100 text-amber-700': msg.task.status === 'in_progress',
-                                                                            'bg-green-100 text-green-700': msg.task.status === 'done'
+                                                                            'bg-green-100 text-green-700': msg.task.status === 'completed'
                                                                         }" class="text-[10px] font-medium px-1.5 py-0.5 rounded" x-text="msg.task.status.replace('_',' ')"></span>
                                                                     </div>
                                                                     <p class="text-sm font-medium" x-text="msg.task.title"></p>
@@ -503,7 +503,7 @@
                                                                         class="text-[10px] rounded border px-1 py-0.5 bg-transparent">
                                                                         <option value="pending">Pending</option>
                                                                         <option value="in_progress">In Progress</option>
-                                                                        <option value="done">Done</option>
+                                                                        <option value="completed">Done</option>
                                                                     </select>
                                                                 </div>
                                                             </div>
@@ -1126,7 +1126,7 @@
                                 class="text-[10px] rounded border px-1 py-0.5 bg-white">
                                 <option value="pending">Pending</option>
                                 <option value="in_progress">In Progress</option>
-                                <option value="done">Done</option>
+                                <option value="completed">Done</option>
                             </select>
                         </div>
                         <p class="text-sm font-medium text-bankos-text" x-text="t.title"></p>
@@ -1224,13 +1224,18 @@
                     class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary">
                 <textarea x-model="taskDescription" placeholder="Description (optional)..." rows="2"
                     class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary resize-none"></textarea>
-                <select x-model="taskAssignedTo"
-                    class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary">
-                    <option value="">Assign to (optional)</option>
-                    <template x-for="u in allUsers" :key="u.id">
-                        <option :value="u.id" x-text="u.name"></option>
-                    </template>
-                </select>
+                <template x-if="activeConversation && activeConversation.is_group">
+                    <select x-model="taskAssignedTo"
+                        class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary">
+                        <option value="">Assign to (optional)</option>
+                        <template x-for="u in (activeConversation.participants || allUsers)" :key="u.id">
+                            <option :value="u.id" x-text="u.name"></option>
+                        </template>
+                    </select>
+                </template>
+                <template x-if="activeConversation && !activeConversation.is_group">
+                    <p class="text-xs text-bankos-text-sec px-1">Task will be assigned to the other participant automatically.</p>
+                </template>
                 <select x-model="taskPriority"
                     class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary">
                     <option value="low">Low Priority</option>
@@ -1885,7 +1890,7 @@ function chatApp() {
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    this.pinnedMessages = data.messages ?? [];
+                    this.pinnedMessages = data.pinned_messages ?? [];
                 }
             } catch {}
         },
@@ -2204,7 +2209,13 @@ function chatApp() {
                     priority: this.taskPriority,
                 };
                 if (this.taskDescription.trim()) payload.description = this.taskDescription.trim();
-                if (this.taskAssignedTo) payload.assigned_to = this.taskAssignedTo;
+                // Auto-assign in DMs: assign to the other person
+                if (!this.activeConversation.is_group && this.activeConversation.participants) {
+                    const other = this.activeConversation.participants.find(p => p.id != {{ $user->id }});
+                    if (other) payload.assigned_to = other.id;
+                } else if (this.taskAssignedTo) {
+                    payload.assigned_to = this.taskAssignedTo;
+                }
                 if (this.taskDueDate) payload.due_date = this.taskDueDate;
 
                 const res = await fetch(`/chat/conversations/${this.activeConversation.id}/tasks`, {
