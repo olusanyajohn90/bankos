@@ -27,12 +27,15 @@ class ChatConversation extends Model
         'is_archived',
         'invite_code',
         'disappear_minutes',
+        'topic',
+        'is_private',
     ];
 
     protected $casts = [
         'last_message_at'  => 'datetime',
         'is_archived'      => 'boolean',
         'disappear_minutes' => 'integer',
+        'is_private'       => 'boolean',
     ];
 
     public function createdBy(): BelongsTo
@@ -76,6 +79,11 @@ class ChatConversation extends Model
     public function polls(): HasMany
     {
         return $this->hasMany(ChatPoll::class, 'conversation_id');
+    }
+
+    public function bookmarks(): HasMany
+    {
+        return $this->hasMany(ChatBookmark::class, 'conversation_id');
     }
 
     public function unreadCountFor(User $user): int

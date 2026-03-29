@@ -868,6 +868,54 @@ Route::middleware(['auth', 'tenant'])->group(function () {
 
         // Disappearing messages
         Route::post('/conversations/{conversation}/disappearing', [ChatController::class, 'setDisappearing'])->name('disappearing');
+
+        // Channels
+        Route::post('/channels', [ChatController::class, 'createChannel'])->name('channels.create');
+        Route::get('/channels/browse', [ChatController::class, 'browseChannels'])->name('channels.browse');
+        Route::post('/channels/{conversation}/join', [ChatController::class, 'joinChannel'])->name('channels.join');
+
+        // Threads
+        Route::get('/messages/{message}/thread', [ChatController::class, 'threadReplies'])->name('threads.replies');
+        Route::post('/messages/{message}/thread', [ChatController::class, 'replyToThread'])->name('threads.reply');
+
+        // Mentions
+        Route::get('/mentions', [ChatController::class, 'myMentions'])->name('mentions');
+
+        // Scheduled messages
+        Route::post('/conversations/{conversation}/schedule', [ChatController::class, 'scheduleMessage'])->name('messages.schedule');
+        Route::get('/conversations/{conversation}/scheduled', [ChatController::class, 'scheduledMessages'])->name('messages.scheduled');
+        Route::delete('/messages/{message}/scheduled', [ChatController::class, 'cancelScheduled'])->name('messages.cancel-scheduled');
+
+        // Reminders
+        Route::post('/reminders', [ChatController::class, 'createReminder'])->name('reminders.create');
+        Route::get('/reminders', [ChatController::class, 'myReminders'])->name('reminders');
+        Route::post('/reminders/{reminderId}/dismiss', [ChatController::class, 'dismissReminder'])->name('reminders.dismiss');
+
+        // User groups
+        Route::get('/user-groups', [ChatController::class, 'userGroups'])->name('user-groups');
+        Route::post('/user-groups', [ChatController::class, 'createUserGroup'])->name('user-groups.create');
+        Route::delete('/user-groups/{groupId}', [ChatController::class, 'deleteUserGroup'])->name('user-groups.delete');
+
+        // Bookmarks
+        Route::post('/conversations/{conversation}/bookmarks', [ChatController::class, 'addBookmark'])->name('bookmarks.add');
+        Route::delete('/bookmarks/{bookmarkId}', [ChatController::class, 'removeBookmark'])->name('bookmarks.remove');
+        Route::get('/conversations/{conversation}/bookmarks', [ChatController::class, 'conversationBookmarks'])->name('bookmarks');
+
+        // Custom emoji
+        Route::post('/emoji', [ChatController::class, 'uploadEmoji'])->name('emoji.upload');
+        Route::get('/emoji', [ChatController::class, 'customEmojis'])->name('emoji');
+        Route::delete('/emoji/{emojiId}', [ChatController::class, 'deleteEmoji'])->name('emoji.delete');
+
+        // User status
+        Route::post('/status', [ChatController::class, 'setStatus'])->name('status.set');
+        Route::delete('/status', [ChatController::class, 'clearStatus'])->name('status.clear');
+        Route::post('/dnd', [ChatController::class, 'setDnd'])->name('dnd.set');
+
+        // Notification preferences
+        Route::post('/conversations/{conversation}/notify-level', [ChatController::class, 'setNotifyLevel'])->name('notify-level');
+
+        // Link unfurling
+        Route::post('/unfurl', [ChatController::class, 'unfurlLink'])->name('unfurl');
     });
 
     // ── PORTAL LOAN APPLICATIONS REVIEW ───────────────────────────────────────

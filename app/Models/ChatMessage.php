@@ -28,15 +28,24 @@ class ChatMessage extends Model
         'delivery_status',
         'is_disappearing',
         'disappear_at',
+        'thread_id',
+        'thread_reply_count',
+        'thread_last_reply_at',
+        'scheduled_at',
+        'is_scheduled',
     ];
 
     protected $casts = [
-        'is_edited'       => 'boolean',
-        'edited_at'       => 'datetime',
-        'is_deleted'      => 'boolean',
-        'deleted_at'      => 'datetime',
-        'is_disappearing' => 'boolean',
-        'disappear_at'    => 'datetime',
+        'is_edited'           => 'boolean',
+        'edited_at'           => 'datetime',
+        'is_deleted'          => 'boolean',
+        'deleted_at'          => 'datetime',
+        'is_disappearing'     => 'boolean',
+        'disappear_at'        => 'datetime',
+        'thread_reply_count'  => 'integer',
+        'thread_last_reply_at' => 'datetime',
+        'scheduled_at'        => 'datetime',
+        'is_scheduled'        => 'boolean',
     ];
 
     public function conversation(): BelongsTo
@@ -87,6 +96,21 @@ class ChatMessage extends Model
     public function starredBy(): HasMany
     {
         return $this->hasMany(ChatStarredMessage::class, 'message_id');
+    }
+
+    public function threadReplies(): HasMany
+    {
+        return $this->hasMany(ChatMessage::class, 'thread_id');
+    }
+
+    public function threadParent(): BelongsTo
+    {
+        return $this->belongsTo(ChatMessage::class, 'thread_id');
+    }
+
+    public function mentions(): HasMany
+    {
+        return $this->hasMany(ChatMention::class, 'message_id');
     }
 
     public function getBodyAttribute($value): string

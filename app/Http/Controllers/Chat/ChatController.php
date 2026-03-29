@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Chat;
 
 use App\Http\Controllers\Controller;
 use App\Models\ChatAttachment;
+use App\Models\ChatBookmark;
 use App\Models\ChatConversation;
+use App\Models\ChatCustomEmoji;
+use App\Models\ChatMention;
 use App\Models\ChatMessage;
 use App\Models\ChatParticipant;
 use App\Models\ChatPinnedMessage;
@@ -14,10 +17,14 @@ use App\Models\ChatPollVote;
 use App\Models\ChatPresence;
 use App\Models\ChatReaction;
 use App\Models\ChatReadReceipt;
+use App\Models\ChatReminder;
 use App\Models\ChatStarredMessage;
 use App\Models\ChatTask;
+use App\Models\ChatUserGroup;
+use App\Models\ChatUserGroupMember;
 use App\Models\User;
 use App\Services\Chat\ChatService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -83,8 +90,11 @@ class ChatController extends Controller
                         ->take(2)
                         ->implode('')
                 ),
-                'is_group'             => $conv->type === 'group',
+                'is_group'             => in_array($conv->type, ['group', 'channel']),
                 'is_archived'          => (bool) $conv->is_archived,
+                'topic'                => $conv->topic,
+                'is_private'           => (bool) $conv->is_private,
+                'notify_level'         => $conv->participants->firstWhere('user_id', $user->id)?->notify_level ?? 'all',
                 'participant_count'    => $conv->participants->whereNull('left_at')->count(),
                 'participants'         => $conv->participants->whereNull('left_at')->map(fn($p) => [
                     'id'   => $p->user_id,
@@ -191,6 +201,16 @@ class ChatController extends Controller
             abort(422, 'A message body or file is required.');
         }
 
+        // ── Slash commands ────────────────────────────────────────────────
+        $body = $request->body ?? '';
+        if (str_starts_with($body, '/')) {
+            $result = $this->handleSlashCommand($body, $conversation, $user);
+            if ($result) {
+                return $result;
+            }
+            // If not a recognized command, send as normal message
+        }
+
         $message = $this->chat->sendMessage(
             $conversation,
             $user,
@@ -200,6 +220,9 @@ class ChatController extends Controller
         );
 
         $message->load(['sender', 'replyTo.sender', 'attachments']);
+
+        // Process @mentions
+        $this->processMentions($message, $conversation);
 
         return response()->json(['message' => $this->formatMessage($message)]);
     }
@@ -1045,9 +1068,19 @@ class ChatController extends Controller
                 ->where('conversation_id', $msg->conversation_id)->exists(),
             'is_starred'      => ChatStarredMessage::where('message_id', $msg->id)
                 ->where('user_id', $userId)->exists(),
-            'is_disappearing' => (bool) $msg->is_disappearing,
-            'poll'            => $pollData,
-            'task'            => $taskData,
+            'is_disappearing'      => (bool) $msg->is_disappearing,
+            'poll'                 => $pollData,
+            'task'                 => $taskData,
+            'thread_reply_count'   => (int) $msg->thread_reply_count,
+            'thread_last_reply_at' => $msg->thread_last_reply_at?->toISOString(),
+            'is_scheduled'         => (bool) $msg->is_scheduled,
+            'scheduled_at'         => $msg->scheduled_at?->toISOString(),
+            'mentions'             => ChatMention::where('message_id', $msg->id)
+                ->with('mentionedUser:id,name')
+                ->get()
+                ->map(fn($m) => $m->mentionedUser?->name ?? $m->mention_type)
+                ->values()
+                ->all(),
         ];
     }
 
@@ -1090,5 +1123,840 @@ class ChatController extends Controller
                 'vote_count' => $opt->votes->count(),
             ])->values()->all(),
         ];
+    }
+
+    // ─── Channels ─────────────────────────────────────────────────────────
+
+    public function createChannel(Request $request): JsonResponse
+    {
+        $user     = auth()->user();
+        $tenantId = $user->tenant_id;
+
+        $request->validate([
+            'name'       => 'required|string|max:100',
+            'topic'      => 'nullable|string|max:255',
+            'is_private' => 'boolean',
+            'user_ids'   => 'nullable|array',
+            'user_ids.*' => 'exists:users,id',
+        ]);
+
+        $conv = ChatConversation::create([
+            'tenant_id'  => $tenantId,
+            'type'       => 'channel',
+            'name'       => $request->name,
+            'topic'      => $request->topic,
+            'is_private' => $request->boolean('is_private', false),
+            'created_by' => $user->id,
+        ]);
+
+        // Add creator as admin
+        ChatParticipant::create([
+            'conversation_id' => $conv->id,
+            'user_id'         => $user->id,
+            'role'            => 'admin',
+            'joined_at'       => now(),
+        ]);
+
+        // Add other users
+        foreach ($request->input('user_ids', []) as $userId) {
+            if ($userId == $user->id) continue;
+            ChatParticipant::create([
+                'conversation_id' => $conv->id,
+                'user_id'         => $userId,
+                'role'            => 'member',
+                'joined_at'       => now(),
+            ]);
+        }
+
+        return response()->json([
+            'conversation_id' => $conv->id,
+            'type'            => 'channel',
+            'name'            => $conv->name,
+            'topic'           => $conv->topic,
+        ]);
+    }
+
+    public function browseChannels(Request $request): JsonResponse
+    {
+        $user     = auth()->user();
+        $tenantId = $user->tenant_id;
+
+        $joinedIds = ChatParticipant::where('user_id', $user->id)
+            ->whereNull('left_at')
+            ->pluck('conversation_id');
+
+        $channels = ChatConversation::where('tenant_id', $tenantId)
+            ->where('type', 'channel')
+            ->where('is_private', false)
+            ->whereNotIn('id', $joinedIds)
+            ->withCount(['participants as member_count' => fn($q) => $q->whereNull('left_at')])
+            ->orderBy('name')
+            ->get()
+            ->map(fn($c) => [
+                'id'           => $c->id,
+                'name'         => $c->name,
+                'topic'        => $c->topic,
+                'member_count' => $c->member_count,
+                'created_at'   => $c->created_at?->toISOString(),
+            ]);
+
+        return response()->json(['channels' => $channels]);
+    }
+
+    public function joinChannel(ChatConversation $conversation): JsonResponse
+    {
+        $user = auth()->user();
+
+        if ($conversation->type !== 'channel') {
+            return response()->json(['error' => 'Not a channel.'], 422);
+        }
+
+        if ($conversation->is_private) {
+            return response()->json(['error' => 'Cannot join a private channel without invitation.'], 403);
+        }
+
+        $existing = ChatParticipant::where('conversation_id', $conversation->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($existing) {
+            if ($existing->left_at !== null) {
+                $existing->update(['left_at' => null, 'joined_at' => now()]);
+            }
+        } else {
+            ChatParticipant::create([
+                'conversation_id' => $conversation->id,
+                'user_id'         => $user->id,
+                'role'            => 'member',
+                'joined_at'       => now(),
+            ]);
+        }
+
+        return response()->json([
+            'success'         => true,
+            'conversation_id' => $conversation->id,
+            'name'            => $conversation->name,
+        ]);
+    }
+
+    // ─── Threads ──────────────────────────────────────────────────────────
+
+    public function threadReplies(Request $request, ChatMessage $message): JsonResponse
+    {
+        $user = auth()->user();
+        $this->abortIfNotParticipant($message->conversation, $user);
+
+        $replies = ChatMessage::where('thread_id', $message->id)
+            ->with(['sender', 'replyTo.sender', 'attachments'])
+            ->orderBy('created_at', 'asc')
+            ->paginate(30);
+
+        $data = collect($replies->items())->map(fn($msg) => $this->formatMessage($msg));
+
+        return response()->json([
+            'replies'  => $data,
+            'has_more' => $replies->hasMorePages(),
+            'total'    => $replies->total(),
+        ]);
+    }
+
+    public function replyToThread(Request $request, ChatMessage $message): JsonResponse
+    {
+        $user = auth()->user();
+        $this->abortIfNotParticipant($message->conversation, $user);
+
+        $request->validate([
+            'body' => 'required|string|max:5000',
+        ]);
+
+        $conversation = $message->conversation;
+
+        $reply = ChatMessage::create([
+            'tenant_id'       => $conversation->tenant_id,
+            'conversation_id' => $conversation->id,
+            'sender_id'       => $user->id,
+            'body'            => $request->body,
+            'type'            => 'text',
+            'delivery_status' => 'sent',
+            'thread_id'       => $message->id,
+        ]);
+
+        // Update parent thread counters
+        $message->update([
+            'thread_reply_count'   => ($message->thread_reply_count ?? 0) + 1,
+            'thread_last_reply_at' => now(),
+        ]);
+
+        $reply->load(['sender', 'replyTo.sender', 'attachments']);
+
+        // Process @mentions
+        $this->processMentions($reply, $conversation);
+
+        return response()->json(['message' => $this->formatMessage($reply)]);
+    }
+
+    // ─── Mentions ─────────────────────────────────────────────────────────
+
+    private function processMentions(ChatMessage $message, ChatConversation $conversation): void
+    {
+        $body = $message->getRawOriginal('body') ?? '';
+        if (empty($body)) return;
+
+        $tenantId = $conversation->tenant_id;
+
+        // Handle @here and @channel — mention all participants
+        if (preg_match('/@(here|channel)\b/', $body, $specialMatch)) {
+            $participantUserIds = ChatParticipant::where('conversation_id', $conversation->id)
+                ->whereNull('left_at')
+                ->where('user_id', '!=', $message->sender_id)
+                ->pluck('user_id');
+
+            foreach ($participantUserIds as $userId) {
+                ChatMention::create([
+                    'message_id'       => $message->id,
+                    'conversation_id'  => $conversation->id,
+                    'mentioned_user_id' => $userId,
+                    'mention_type'     => $specialMatch[1],
+                    'is_read'          => false,
+                    'created_at'       => now(),
+                ]);
+            }
+            return;
+        }
+
+        // Handle @username patterns
+        preg_match_all('/@([\w\s]+?)(?=\s@|$|\s[^@])/', $body, $matches);
+        if (empty($matches[1])) return;
+
+        foreach ($matches[1] as $nameCandidate) {
+            $nameCandidate = trim($nameCandidate);
+            if (empty($nameCandidate)) continue;
+
+            $mentionedUser = User::where('tenant_id', $tenantId)
+                ->where('name', 'ilike', $nameCandidate)
+                ->first();
+
+            if ($mentionedUser && $mentionedUser->id !== $message->sender_id) {
+                ChatMention::create([
+                    'message_id'        => $message->id,
+                    'conversation_id'   => $conversation->id,
+                    'mentioned_user_id' => $mentionedUser->id,
+                    'mention_type'      => 'user',
+                    'is_read'           => false,
+                    'created_at'        => now(),
+                ]);
+            }
+        }
+    }
+
+    public function myMentions(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+
+        $mentions = ChatMention::where('mentioned_user_id', $user->id)
+            ->where('is_read', false)
+            ->with(['message.sender', 'conversation'])
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get()
+            ->map(fn($m) => [
+                'id'                => $m->id,
+                'message_id'        => $m->message_id,
+                'conversation_id'   => $m->conversation_id,
+                'conversation_name' => $m->conversation?->getDisplayName($user) ?? 'Unknown',
+                'sender'            => $m->message?->sender?->name ?? 'Unknown',
+                'body'              => $m->message?->getRawOriginal('body') ?? '',
+                'mention_type'      => $m->mention_type,
+                'created_at'        => $m->created_at?->toISOString(),
+            ]);
+
+        return response()->json(['mentions' => $mentions]);
+    }
+
+    // ─── Scheduled Messages ───────────────────────────────────────────────
+
+    public function scheduleMessage(Request $request, ChatConversation $conversation): JsonResponse
+    {
+        $user = auth()->user();
+        $this->abortIfNotParticipant($conversation, $user);
+
+        $request->validate([
+            'body'         => 'required|string|max:5000',
+            'scheduled_at' => 'required|date|after:now',
+        ]);
+
+        $message = ChatMessage::create([
+            'tenant_id'       => $conversation->tenant_id,
+            'conversation_id' => $conversation->id,
+            'sender_id'       => $user->id,
+            'body'            => $request->body,
+            'type'            => 'text',
+            'delivery_status' => 'pending',
+            'is_scheduled'    => true,
+            'scheduled_at'    => $request->scheduled_at,
+        ]);
+
+        $message->load(['sender', 'replyTo.sender', 'attachments']);
+
+        return response()->json(['message' => $this->formatMessage($message)]);
+    }
+
+    public function scheduledMessages(ChatConversation $conversation): JsonResponse
+    {
+        $user = auth()->user();
+        $this->abortIfNotParticipant($conversation, $user);
+
+        $messages = ChatMessage::where('conversation_id', $conversation->id)
+            ->where('sender_id', $user->id)
+            ->where('is_scheduled', true)
+            ->with(['sender', 'attachments'])
+            ->orderBy('scheduled_at')
+            ->get()
+            ->map(fn($msg) => $this->formatMessage($msg));
+
+        return response()->json(['scheduled_messages' => $messages]);
+    }
+
+    public function cancelScheduled(ChatMessage $message): JsonResponse
+    {
+        $user = auth()->user();
+
+        if ($message->sender_id !== $user->id) {
+            abort(403, 'You can only cancel your own scheduled messages.');
+        }
+
+        if (! $message->is_scheduled) {
+            return response()->json(['error' => 'This message is not scheduled.'], 422);
+        }
+
+        $message->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    // ─── Reminders ────────────────────────────────────────────────────────
+
+    public function createReminder(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+
+        $request->validate([
+            'note'            => 'required|string|max:500',
+            'remind_at'       => 'required|date|after:now',
+            'conversation_id' => 'nullable|exists:chat_conversations,id',
+            'message_id'      => 'nullable|exists:chat_messages,id',
+        ]);
+
+        $reminder = ChatReminder::create([
+            'tenant_id'       => $user->tenant_id,
+            'user_id'         => $user->id,
+            'conversation_id' => $request->conversation_id,
+            'message_id'      => $request->message_id,
+            'note'            => $request->note,
+            'remind_at'       => $request->remind_at,
+            'is_fired'        => false,
+        ]);
+
+        return response()->json(['reminder' => [
+            'id'        => $reminder->id,
+            'note'      => $reminder->note,
+            'remind_at' => $reminder->remind_at->toISOString(),
+        ]]);
+    }
+
+    public function myReminders(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+
+        $reminders = ChatReminder::where('user_id', $user->id)
+            ->where('is_fired', false)
+            ->orderBy('remind_at')
+            ->get()
+            ->map(fn($r) => [
+                'id'              => $r->id,
+                'note'            => $r->note,
+                'remind_at'       => $r->remind_at->toISOString(),
+                'conversation_id' => $r->conversation_id,
+                'message_id'      => $r->message_id,
+            ]);
+
+        return response()->json(['reminders' => $reminders]);
+    }
+
+    public function dismissReminder(string $reminderId): JsonResponse
+    {
+        $user     = auth()->user();
+        $reminder = ChatReminder::where('id', $reminderId)->where('user_id', $user->id)->firstOrFail();
+        $reminder->update(['is_fired' => true]);
+
+        return response()->json(['success' => true]);
+    }
+
+    // ─── User Groups ──────────────────────────────────────────────────────
+
+    public function userGroups(): JsonResponse
+    {
+        $user     = auth()->user();
+        $tenantId = $user->tenant_id;
+
+        $groups = ChatUserGroup::where('tenant_id', $tenantId)
+            ->withCount('members')
+            ->with('creator:id,name')
+            ->orderBy('name')
+            ->get()
+            ->map(fn($g) => [
+                'id'           => $g->id,
+                'name'         => $g->name,
+                'handle'       => $g->handle,
+                'description'  => $g->description,
+                'member_count' => $g->members_count,
+                'created_by'   => $g->creator?->name ?? 'Unknown',
+            ]);
+
+        return response()->json(['groups' => $groups]);
+    }
+
+    public function createUserGroup(Request $request): JsonResponse
+    {
+        $user     = auth()->user();
+        $tenantId = $user->tenant_id;
+
+        $request->validate([
+            'name'        => 'required|string|max:100',
+            'handle'      => 'required|string|max:50|alpha_dash',
+            'description' => 'nullable|string|max:500',
+            'user_ids'    => 'nullable|array',
+            'user_ids.*'  => 'exists:users,id',
+        ]);
+
+        $group = ChatUserGroup::create([
+            'tenant_id'  => $tenantId,
+            'name'       => $request->name,
+            'handle'     => $request->handle,
+            'description' => $request->description,
+            'created_by' => $user->id,
+        ]);
+
+        // Add members
+        foreach ($request->input('user_ids', []) as $userId) {
+            ChatUserGroupMember::create([
+                'group_id' => $group->id,
+                'user_id'  => $userId,
+                'added_at' => now(),
+            ]);
+        }
+
+        return response()->json([
+            'id'     => $group->id,
+            'name'   => $group->name,
+            'handle' => $group->handle,
+        ]);
+    }
+
+    public function deleteUserGroup(string $groupId): JsonResponse
+    {
+        $user  = auth()->user();
+        $group = ChatUserGroup::where('id', $groupId)
+            ->where('tenant_id', $user->tenant_id)
+            ->firstOrFail();
+
+        ChatUserGroupMember::where('group_id', $group->id)->delete();
+        $group->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    // ─── Bookmarks ────────────────────────────────────────────────────────
+
+    public function addBookmark(Request $request, ChatConversation $conversation): JsonResponse
+    {
+        $user = auth()->user();
+        $this->abortIfNotParticipant($conversation, $user);
+
+        $request->validate([
+            'title'      => 'required|string|max:255',
+            'url'        => 'nullable|url|max:2000',
+            'message_id' => 'nullable|exists:chat_messages,id',
+        ]);
+
+        $maxSort = ChatBookmark::where('conversation_id', $conversation->id)->max('sort_order') ?? 0;
+
+        $bookmark = ChatBookmark::create([
+            'conversation_id' => $conversation->id,
+            'created_by'      => $user->id,
+            'title'           => $request->title,
+            'url'             => $request->url,
+            'message_id'      => $request->message_id,
+            'sort_order'      => $maxSort + 1,
+        ]);
+
+        return response()->json(['bookmark' => [
+            'id'    => $bookmark->id,
+            'title' => $bookmark->title,
+            'url'   => $bookmark->url,
+        ]]);
+    }
+
+    public function removeBookmark(string $bookmarkId): JsonResponse
+    {
+        $user     = auth()->user();
+        $bookmark = ChatBookmark::findOrFail($bookmarkId);
+
+        // Verify user is participant of the conversation
+        $this->abortIfNotParticipant($bookmark->conversation, $user);
+
+        $bookmark->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function conversationBookmarks(ChatConversation $conversation): JsonResponse
+    {
+        $user = auth()->user();
+        $this->abortIfNotParticipant($conversation, $user);
+
+        $bookmarks = ChatBookmark::where('conversation_id', $conversation->id)
+            ->with('creator:id,name')
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn($b) => [
+                'id'         => $b->id,
+                'title'      => $b->title,
+                'url'        => $b->url,
+                'message_id' => $b->message_id,
+                'created_by' => $b->creator?->name ?? 'Unknown',
+                'created_at' => $b->created_at?->toISOString(),
+            ]);
+
+        return response()->json(['bookmarks' => $bookmarks]);
+    }
+
+    // ─── Custom Emoji ─────────────────────────────────────────────────────
+
+    public function uploadEmoji(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+
+        $request->validate([
+            'shortcode' => 'required|string|max:50|alpha_dash',
+            'image'     => 'required|image|max:256',
+        ]);
+
+        $path = $request->file('image')->store('chat/emoji/' . $user->tenant_id, 'public');
+
+        $emoji = ChatCustomEmoji::create([
+            'tenant_id'  => $user->tenant_id,
+            'shortcode'  => $request->shortcode,
+            'image_path' => $path,
+            'created_by' => $user->id,
+        ]);
+
+        return response()->json(['emoji' => [
+            'id'        => $emoji->id,
+            'shortcode' => $emoji->shortcode,
+            'url'       => Storage::disk('public')->url($emoji->image_path),
+        ]]);
+    }
+
+    public function customEmojis(): JsonResponse
+    {
+        $user = auth()->user();
+
+        $emojis = ChatCustomEmoji::where('tenant_id', $user->tenant_id)
+            ->orderBy('shortcode')
+            ->get()
+            ->map(fn($e) => [
+                'id'        => $e->id,
+                'shortcode' => $e->shortcode,
+                'url'       => Storage::disk('public')->url($e->image_path),
+            ]);
+
+        return response()->json(['emojis' => $emojis]);
+    }
+
+    public function deleteEmoji(string $emojiId): JsonResponse
+    {
+        $user  = auth()->user();
+        $emoji = ChatCustomEmoji::where('id', $emojiId)
+            ->where('tenant_id', $user->tenant_id)
+            ->firstOrFail();
+
+        Storage::disk('public')->delete($emoji->image_path);
+        $emoji->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    // ─── User Status ──────────────────────────────────────────────────────
+
+    public function setStatus(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+
+        $request->validate([
+            'chat_status_emoji' => 'nullable|string|max:10',
+            'chat_status_text'  => 'nullable|string|max:100',
+            'chat_status_until' => 'nullable|date|after:now',
+        ]);
+
+        $user->update([
+            'chat_status_emoji' => $request->chat_status_emoji,
+            'chat_status_text'  => $request->chat_status_text,
+            'chat_status_until' => $request->chat_status_until,
+        ]);
+
+        return response()->json(['success' => true, 'status' => [
+            'emoji' => $user->chat_status_emoji,
+            'text'  => $user->chat_status_text,
+            'until' => $user->chat_status_until?->toISOString(),
+        ]]);
+    }
+
+    public function clearStatus(): JsonResponse
+    {
+        $user = auth()->user();
+
+        $user->update([
+            'chat_status_emoji' => null,
+            'chat_status_text'  => null,
+            'chat_status_until' => null,
+        ]);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function setDnd(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+
+        $request->validate([
+            'chat_dnd_until' => 'required|date|after:now',
+        ]);
+
+        $user->update([
+            'chat_dnd_until' => $request->chat_dnd_until,
+        ]);
+
+        return response()->json(['success' => true, 'dnd_until' => $user->chat_dnd_until->toISOString()]);
+    }
+
+    // ─── Notification Preferences ─────────────────────────────────────────
+
+    public function setNotifyLevel(Request $request, ChatConversation $conversation): JsonResponse
+    {
+        $user = auth()->user();
+        $this->abortIfNotParticipant($conversation, $user);
+
+        $request->validate([
+            'notify_level' => 'required|string|in:all,mentions,none',
+        ]);
+
+        ChatParticipant::where('conversation_id', $conversation->id)
+            ->where('user_id', $user->id)
+            ->update(['notify_level' => $request->notify_level]);
+
+        return response()->json(['success' => true, 'notify_level' => $request->notify_level]);
+    }
+
+    // ─── Link Unfurling ───────────────────────────────────────────────────
+
+    public function unfurlLink(Request $request): JsonResponse
+    {
+        $request->validate([
+            'url' => 'required|url|max:2000',
+        ]);
+
+        $url = $request->url;
+
+        try {
+            $context = stream_context_create([
+                'http' => [
+                    'timeout'       => 5,
+                    'max_redirects' => 3,
+                    'user_agent'    => 'BankOS-LinkPreview/1.0',
+                ],
+                'ssl' => [
+                    'verify_peer' => false,
+                ],
+            ]);
+
+            $html = @file_get_contents($url, false, $context, 0, 100000);
+
+            if ($html === false) {
+                return response()->json(['unfurl' => ['url' => $url, 'title' => null, 'description' => null, 'image' => null]]);
+            }
+
+            $title       = null;
+            $description = null;
+            $image       = null;
+
+            // og:title
+            if (preg_match('/<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']*)["\']/', $html, $m)) {
+                $title = html_entity_decode($m[1], ENT_QUOTES, 'UTF-8');
+            } elseif (preg_match('/<title[^>]*>([^<]+)<\/title>/', $html, $m)) {
+                $title = html_entity_decode(trim($m[1]), ENT_QUOTES, 'UTF-8');
+            }
+
+            // og:description
+            if (preg_match('/<meta[^>]+property=["\']og:description["\'][^>]+content=["\']([^"\']*)["\']/', $html, $m)) {
+                $description = html_entity_decode($m[1], ENT_QUOTES, 'UTF-8');
+            } elseif (preg_match('/<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']*)["\']/', $html, $m)) {
+                $description = html_entity_decode($m[1], ENT_QUOTES, 'UTF-8');
+            }
+
+            // og:image
+            if (preg_match('/<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']*)["\']/', $html, $m)) {
+                $image = $m[1];
+            }
+
+            return response()->json(['unfurl' => [
+                'url'         => $url,
+                'title'       => $title,
+                'description' => $description,
+                'image'       => $image,
+            ]]);
+        } catch (\Throwable $e) {
+            return response()->json(['unfurl' => ['url' => $url, 'title' => null, 'description' => null, 'image' => null]]);
+        }
+    }
+
+    // ─── Slash Command Handler ────────────────────────────────────────────
+
+    private function handleSlashCommand(string $body, ChatConversation $conversation, $user): ?JsonResponse
+    {
+        $parts   = preg_split('/\s+/', trim($body), 2);
+        $command = strtolower($parts[0]);
+        $args    = $parts[1] ?? '';
+
+        switch ($command) {
+            case '/remind':
+                // /remind 30m Review the report
+                if (preg_match('/^(\d+)(m|h|d)\s+(.+)$/i', $args, $m)) {
+                    $amount = (int) $m[1];
+                    $unit   = strtolower($m[2]);
+                    $note   = $m[3];
+
+                    $remindAt = match ($unit) {
+                        'm' => now()->addMinutes($amount),
+                        'h' => now()->addHours($amount),
+                        'd' => now()->addDays($amount),
+                    };
+
+                    ChatReminder::create([
+                        'tenant_id'       => $user->tenant_id,
+                        'user_id'         => $user->id,
+                        'conversation_id' => $conversation->id,
+                        'note'            => $note,
+                        'remind_at'       => $remindAt,
+                        'is_fired'        => false,
+                    ]);
+
+                    return $this->systemMessageResponse("Reminder set for {$remindAt->diffForHumans()}: {$note}", $conversation, $user);
+                }
+                return null;
+
+            case '/status':
+                // /status :smile: Working from home
+                if (preg_match('/^(:[\w+-]+:)\s*(.*)$/', $args, $m)) {
+                    $user->update([
+                        'chat_status_emoji' => $m[1],
+                        'chat_status_text'  => $m[2] ?: null,
+                    ]);
+                    return $this->systemMessageResponse("Status set to {$m[1]} {$m[2]}", $conversation, $user);
+                } elseif (! empty($args)) {
+                    $user->update(['chat_status_text' => $args]);
+                    return $this->systemMessageResponse("Status set to: {$args}", $conversation, $user);
+                }
+                return null;
+
+            case '/dnd':
+                // /dnd 2h
+                if (preg_match('/^(\d+)(m|h|d)$/i', $args, $m)) {
+                    $amount = (int) $m[1];
+                    $unit   = strtolower($m[2]);
+
+                    $dndUntil = match ($unit) {
+                        'm' => now()->addMinutes($amount),
+                        'h' => now()->addHours($amount),
+                        'd' => now()->addDays($amount),
+                    };
+
+                    $user->update(['chat_dnd_until' => $dndUntil]);
+                    return $this->systemMessageResponse("Do Not Disturb enabled until {$dndUntil->diffForHumans()}", $conversation, $user);
+                }
+                return null;
+
+            case '/topic':
+                if (! empty($args) && in_array($conversation->type, ['group', 'channel'])) {
+                    $conversation->update(['topic' => $args]);
+                    return $this->systemMessageResponse("Topic changed to: {$args}", $conversation, $user);
+                }
+                return null;
+
+            case '/poll':
+                // /poll What for lunch? | Pizza | Sushi | Tacos
+                $segments = array_map('trim', explode('|', $args));
+                if (count($segments) >= 3) {
+                    $question = $segments[0];
+                    $options  = array_slice($segments, 1);
+
+                    return DB::transaction(function () use ($question, $options, $conversation, $user) {
+                        $message = ChatMessage::create([
+                            'tenant_id'       => $conversation->tenant_id,
+                            'conversation_id' => $conversation->id,
+                            'sender_id'       => $user->id,
+                            'body'            => $question,
+                            'type'            => 'poll',
+                            'delivery_status' => 'sent',
+                        ]);
+
+                        $poll = ChatPoll::create([
+                            'message_id'      => $message->id,
+                            'conversation_id' => $conversation->id,
+                            'question'        => $question,
+                            'allow_multiple'  => false,
+                            'is_anonymous'    => false,
+                            'is_closed'       => false,
+                        ]);
+
+                        foreach ($options as $i => $text) {
+                            ChatPollOption::create([
+                                'poll_id'    => $poll->id,
+                                'text'       => $text,
+                                'sort_order' => $i,
+                            ]);
+                        }
+
+                        $conversation->update([
+                            'last_message_at'      => now(),
+                            'last_message_preview' => "Poll: {$question}",
+                        ]);
+
+                        $message->load(['sender', 'replyTo.sender', 'attachments', 'poll.options.votes']);
+
+                        return response()->json(['message' => $this->formatMessage($message)]);
+                    });
+                }
+                return null;
+
+            default:
+                return null;
+        }
+    }
+
+    private function systemMessageResponse(string $text, ChatConversation $conversation, $user): JsonResponse
+    {
+        $message = ChatMessage::create([
+            'tenant_id'       => $conversation->tenant_id,
+            'conversation_id' => $conversation->id,
+            'sender_id'       => $user->id,
+            'body'            => $text,
+            'type'            => 'system',
+            'delivery_status' => 'sent',
+        ]);
+
+        $message->load(['sender', 'replyTo.sender', 'attachments']);
+
+        return response()->json(['message' => $this->formatMessage($message)]);
     }
 }

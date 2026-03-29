@@ -28,6 +28,10 @@ class User extends Authenticatable
         'last_login_ip',
         'failed_login_count',
         'locked_until',
+        'chat_status_emoji',
+        'chat_status_text',
+        'chat_status_until',
+        'chat_dnd_until',
     ];
 
     protected $hidden = [
@@ -45,6 +49,8 @@ class User extends Authenticatable
         'last_login_at'           => 'datetime',
         'locked_until'            => 'datetime',
         'failed_login_count'      => 'integer',
+        'chat_status_until'       => 'datetime',
+        'chat_dnd_until'          => 'datetime',
     ];
 
     // Relationships

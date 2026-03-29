@@ -18,6 +18,7 @@ class ChatParticipant extends Model
         'left_at',
         'is_muted',
         'muted_until',
+        'notify_level',
     ];
 
     protected $casts = [

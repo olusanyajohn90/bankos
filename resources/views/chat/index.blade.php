@@ -14,134 +14,247 @@
         <div class="w-80 flex-shrink-0 flex flex-col border-r border-bankos-border bg-white overflow-hidden"
             :class="{'hidden sm:flex': activeConversation, 'flex': !activeConversation}">
 
-            {{-- Header --}}
-            <div class="flex items-center justify-between px-4 py-3 border-b border-bankos-border bg-white">
-                <h2 class="text-base font-semibold text-bankos-text">Chat</h2>
-                <div class="flex items-center gap-1">
-                    {{-- Search messages --}}
-                    <button @click="showSearchModal = true" title="Search Messages"
-                        class="p-1.5 rounded-lg text-bankos-text-sec hover:bg-gray-100 hover:text-bankos-primary transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+            {{-- Header with tabs --}}
+            <div class="border-b border-bankos-border bg-white flex-shrink-0">
+                <div class="flex items-center justify-between px-4 py-2">
+                    <h2 class="text-base font-semibold text-bankos-text">Chat</h2>
+                    <div class="flex items-center gap-1">
+                        {{-- User status indicator --}}
+                        <button @click="showStatusModal = true" title="Set Status"
+                            class="relative p-1.5 rounded-lg text-bankos-text-sec hover:bg-gray-100 hover:text-bankos-primary transition-colors">
+                            <template x-if="isDnd">
+                                <span class="text-sm">&#128308;</span>
+                            </template>
+                            <template x-if="!isDnd && currentUserStatus && currentUserStatus.emoji">
+                                <span class="text-sm" x-text="currentUserStatus.emoji"></span>
+                            </template>
+                            <template x-if="!isDnd && (!currentUserStatus || !currentUserStatus.emoji)">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </template>
+                        </button>
+                        {{-- Search messages --}}
+                        <button @click="showSearchModal = true" title="Search Messages"
+                            class="p-1.5 rounded-lg text-bankos-text-sec hover:bg-gray-100 hover:text-bankos-primary transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                        </button>
+                        {{-- Starred messages --}}
+                        <button @click="openStarredPanel()" title="Starred Messages"
+                            class="p-1.5 rounded-lg text-bankos-text-sec hover:bg-gray-100 hover:text-bankos-primary transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                                    d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                            </svg>
+                        </button>
+                        {{-- New DM --}}
+                        <button @click="showNewDirectModal = true; userSearch = ''; filterUsers()"
+                            title="New Direct Message"
+                            class="p-1.5 rounded-lg text-bankos-text-sec hover:bg-gray-100 hover:text-bankos-primary transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                        </button>
+                        {{-- New Group --}}
+                        <button @click="showNewGroupModal = true; userSearch = ''; filterUsers()"
+                            title="New Group"
+                            class="p-1.5 rounded-lg text-bankos-text-sec hover:bg-gray-100 hover:text-bankos-primary transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                {{-- Tab bar: Chats | Channels | Mentions --}}
+                <div class="flex border-t border-bankos-border">
+                    <button @click="leftPanelTab = 'chats'"
+                        :class="leftPanelTab === 'chats' ? 'text-bankos-primary border-b-2 border-bankos-primary bg-bankos-primary/5' : 'text-bankos-text-sec hover:text-bankos-text hover:bg-gray-50'"
+                        class="flex-1 text-xs font-medium py-2 text-center transition-colors">Chats</button>
+                    <button @click="leftPanelTab = 'channels'; loadChannels()"
+                        :class="leftPanelTab === 'channels' ? 'text-bankos-primary border-b-2 border-bankos-primary bg-bankos-primary/5' : 'text-bankos-text-sec hover:text-bankos-text hover:bg-gray-50'"
+                        class="flex-1 text-xs font-medium py-2 text-center transition-colors">Channels</button>
+                    <button @click="leftPanelTab = 'mentions'; loadMentions()"
+                        :class="leftPanelTab === 'mentions' ? 'text-bankos-primary border-b-2 border-bankos-primary bg-bankos-primary/5' : 'text-bankos-text-sec hover:text-bankos-text hover:bg-gray-50'"
+                        class="flex-1 text-xs font-medium py-2 text-center transition-colors">Mentions</button>
+                </div>
+            </div>
+
+            {{-- ═══ CHATS TAB ═══ --}}
+            <div x-show="leftPanelTab === 'chats'" class="flex-1 flex flex-col min-h-0 overflow-hidden">
+                {{-- Search conversations --}}
+                <div class="px-3 py-2 border-b border-bankos-border">
+                    <div class="relative">
+                        <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-bankos-muted pointer-events-none"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
-                    </button>
-                    {{-- Starred messages --}}
-                    <button @click="openStarredPanel()" title="Starred Messages"
-                        class="p-1.5 rounded-lg text-bankos-text-sec hover:bg-gray-100 hover:text-bankos-primary transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
-                        </svg>
-                    </button>
-                    {{-- New DM --}}
-                    <button @click="showNewDirectModal = true; userSearch = ''; filterUsers()"
-                        title="New Direct Message"
-                        class="p-1.5 rounded-lg text-bankos-text-sec hover:bg-gray-100 hover:text-bankos-primary transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                        </svg>
-                    </button>
-                    {{-- New Group --}}
-                    <button @click="showNewGroupModal = true; userSearch = ''; filterUsers()"
-                        title="New Group"
-                        class="p-1.5 rounded-lg text-bankos-text-sec hover:bg-gray-100 hover:text-bankos-primary transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            {{-- Search conversations --}}
-            <div class="px-3 py-2 border-b border-bankos-border">
-                <div class="relative">
-                    <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-bankos-muted pointer-events-none"
-                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
-                    <input x-model="convSearch" type="text" placeholder="Filter conversations..."
-                        class="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary">
-                </div>
-            </div>
-
-            {{-- Loading spinner --}}
-            <div x-show="loadingConversations" class="flex justify-center py-6">
-                <svg class="animate-spin w-5 h-5 text-bankos-primary" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-            </div>
-
-            {{-- Conversation List --}}
-            <div class="flex-1 overflow-y-auto" x-show="!loadingConversations">
-
-                {{-- Empty state --}}
-                <template x-if="filteredConversations().length === 0 && !loadingConversations">
-                    <div class="flex flex-col items-center justify-center h-full text-bankos-muted py-12 px-4 text-center">
-                        <svg class="w-10 h-10 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                        </svg>
-                        <p class="text-sm">No conversations yet</p>
-                        <p class="text-xs mt-1 text-bankos-muted">Start a direct message or create a group</p>
+                        <input x-model="convSearch" type="text" placeholder="Filter conversations..."
+                            class="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary">
                     </div>
-                </template>
+                </div>
 
-                <template x-for="conv in filteredConversations()" :key="conv.id">
-                    <div @click="openConversation(conv)"
-                        :class="activeConversation && activeConversation.id === conv.id
-                            ? 'bg-bankos-primary/5 border-l-2 border-l-bankos-primary'
-                            : 'border-l-2 border-l-transparent hover:bg-gray-50'"
-                        class="flex items-center gap-3 px-3 py-3 cursor-pointer transition-colors">
+                {{-- Loading spinner --}}
+                <div x-show="loadingConversations" class="flex justify-center py-6">
+                    <svg class="animate-spin w-5 h-5 text-bankos-primary" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                </div>
 
-                        {{-- Avatar with online indicator --}}
-                        <div class="relative flex-shrink-0">
-                            <div :class="conv.is_group ? 'bg-purple-100 text-purple-700' : 'bg-bankos-primary/10 text-bankos-primary'"
-                                class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold">
-                                <template x-if="conv.is_group">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    </svg>
-                                </template>
-                                <template x-if="!conv.is_group">
-                                    <span x-text="conv.avatar_initials"></span>
-                                </template>
-                            </div>
-                            {{-- Online dot --}}
-                            <span x-show="conv.is_online" class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>
-                            {{-- Unread badge --}}
-                            <span x-show="conv.unread_count > 0"
-                                x-text="conv.unread_count > 99 ? '99+' : conv.unread_count"
-                                class="absolute -top-1 -right-1 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
-                            </span>
+                {{-- Conversation List --}}
+                <div class="flex-1 overflow-y-auto" x-show="!loadingConversations">
+
+                    {{-- Empty state --}}
+                    <template x-if="filteredConversations().length === 0 && !loadingConversations">
+                        <div class="flex flex-col items-center justify-center h-full text-bankos-muted py-12 px-4 text-center">
+                            <svg class="w-10 h-10 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                            </svg>
+                            <p class="text-sm">No conversations yet</p>
+                            <p class="text-xs mt-1 text-bankos-muted">Start a direct message or create a group</p>
                         </div>
+                    </template>
 
-                        {{-- Text content --}}
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center justify-between gap-1">
-                                <div class="flex items-center gap-1 min-w-0">
-                                    <span :class="conv.unread_count > 0 ? 'font-semibold text-bankos-text' : 'font-medium text-bankos-text'"
-                                        class="text-sm truncate" x-text="conv.display_name"></span>
-                                    {{-- Muted icon --}}
-                                    <template x-if="conv.is_muted">
-                                        <svg class="w-3.5 h-3.5 text-bankos-muted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd"/>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+                    <template x-for="conv in filteredConversations()" :key="conv.id">
+                        <div @click="openConversation(conv)"
+                            :class="activeConversation && activeConversation.id === conv.id
+                                ? 'bg-bankos-primary/5 border-l-2 border-l-bankos-primary'
+                                : 'border-l-2 border-l-transparent hover:bg-gray-50'"
+                            class="flex items-center gap-3 px-3 py-3 cursor-pointer transition-colors">
+
+                            {{-- Avatar with online indicator --}}
+                            <div class="relative flex-shrink-0">
+                                <div :class="conv.is_group ? 'bg-purple-100 text-purple-700' : 'bg-bankos-primary/10 text-bankos-primary'"
+                                    class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold">
+                                    <template x-if="conv.is_group">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        </svg>
+                                    </template>
+                                    <template x-if="!conv.is_group">
+                                        <span x-text="conv.avatar_initials"></span>
+                                    </template>
+                                </div>
+                                {{-- Online dot --}}
+                                <span x-show="conv.is_online" class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>
+                                {{-- Unread badge --}}
+                                <span x-show="conv.unread_count > 0"
+                                    x-text="conv.unread_count > 99 ? '99+' : conv.unread_count"
+                                    class="absolute -top-1 -right-1 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                                </span>
+                            </div>
+
+                            {{-- Text content --}}
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between gap-1">
+                                    <div class="flex items-center gap-1 min-w-0">
+                                        <span :class="conv.unread_count > 0 ? 'font-semibold text-bankos-text' : 'font-medium text-bankos-text'"
+                                            class="text-sm truncate" x-text="conv.display_name"></span>
+                                        {{-- Muted icon --}}
+                                        <template x-if="conv.is_muted">
+                                            <svg class="w-3.5 h-3.5 text-bankos-muted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+                                            </svg>
+                                        </template>
+                                    </div>
+                                    <span class="text-[10px] text-bankos-muted flex-shrink-0" x-text="conv.last_message_at ?? ''"></span>
+                                </div>
+                                <p :class="conv.unread_count > 0 ? 'text-bankos-text font-medium' : 'text-bankos-text-sec'"
+                                    class="text-xs truncate mt-0.5" x-text="conv.last_message_preview ?? 'No messages yet'"></p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            {{-- ═══ CHANNELS TAB ═══ --}}
+            <div x-show="leftPanelTab === 'channels'" class="flex-1 flex flex-col min-h-0 overflow-hidden">
+                <div class="px-3 py-2 border-b border-bankos-border flex items-center gap-2">
+                    <button @click="showNewChannelModal = true; userSearch = ''; filterUsers()"
+                        class="flex-1 px-3 py-1.5 text-xs font-medium text-bankos-primary bg-bankos-primary/5 rounded-lg hover:bg-bankos-primary/10 transition-colors text-center">
+                        + New Channel
+                    </button>
+                    <button @click="loadBrowseChannels(); showBrowseChannels = true"
+                        class="flex-1 px-3 py-1.5 text-xs font-medium text-bankos-text-sec bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors text-center">
+                        Browse
+                    </button>
+                </div>
+                <div class="flex-1 overflow-y-auto">
+                    <template x-if="channels.length === 0">
+                        <div class="flex flex-col items-center justify-center py-12 px-4 text-center text-bankos-muted">
+                            <svg class="w-10 h-10 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
+                            </svg>
+                            <p class="text-sm">No channels yet</p>
+                            <p class="text-xs mt-1">Create or browse channels to get started</p>
+                        </div>
+                    </template>
+                    <template x-for="ch in channels" :key="ch.id">
+                        <div @click="openConversation(ch)"
+                            :class="activeConversation && activeConversation.id === ch.id
+                                ? 'bg-bankos-primary/5 border-l-2 border-l-bankos-primary'
+                                : 'border-l-2 border-l-transparent hover:bg-gray-50'"
+                            class="flex items-center gap-3 px-3 py-3 cursor-pointer transition-colors">
+                            <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
+                                </svg>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-1">
+                                    <span class="text-sm font-medium text-bankos-text truncate" x-text="'#' + ch.display_name"></span>
+                                    <template x-if="ch.is_private">
+                                        <svg class="w-3 h-3 text-bankos-muted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                                         </svg>
                                     </template>
                                 </div>
-                                <span class="text-[10px] text-bankos-muted flex-shrink-0" x-text="conv.last_message_at ?? ''"></span>
+                                <p class="text-xs text-bankos-text-sec truncate mt-0.5" x-text="ch.topic || ch.last_message_preview || 'No messages yet'"></p>
                             </div>
-                            <p :class="conv.unread_count > 0 ? 'text-bankos-text font-medium' : 'text-bankos-text-sec'"
-                                class="text-xs truncate mt-0.5" x-text="conv.last_message_preview ?? 'No messages yet'"></p>
                         </div>
+                    </template>
+                </div>
+            </div>
+
+            {{-- ═══ MENTIONS TAB ═══ --}}
+            <div x-show="leftPanelTab === 'mentions'" class="flex-1 flex flex-col min-h-0 overflow-hidden">
+                <div class="flex-1 overflow-y-auto">
+                    <div x-show="loadingMentions" class="flex justify-center py-6">
+                        <svg class="animate-spin w-5 h-5 text-bankos-primary" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
                     </div>
-                </template>
+                    <template x-if="mentionsList.length === 0 && !loadingMentions">
+                        <div class="flex flex-col items-center justify-center py-12 px-4 text-center text-bankos-muted">
+                            <svg class="w-10 h-10 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/>
+                            </svg>
+                            <p class="text-sm">No mentions</p>
+                            <p class="text-xs mt-1">When someone @mentions you, it will appear here</p>
+                        </div>
+                    </template>
+                    <template x-for="mention in mentionsList" :key="mention.id">
+                        <div @click="goToMention(mention)"
+                            class="px-3 py-3 hover:bg-gray-50 cursor-pointer transition-colors border-b border-bankos-border">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs font-semibold text-bankos-primary" x-text="mention.conversation_name"></span>
+                                <span class="text-[10px] text-bankos-muted" x-text="mention.created_at"></span>
+                            </div>
+                            <p class="text-xs text-bankos-text-sec" x-text="mention.sender_name"></p>
+                            <p class="text-sm text-bankos-text mt-0.5 line-clamp-2" x-text="mention.body"></p>
+                        </div>
+                    </template>
+                </div>
             </div>
         </div>
 
@@ -165,7 +278,23 @@
 
             {{-- Active conversation --}}
             <template x-if="activeConversation">
-                <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
+                <div class="flex-1 flex min-h-0 overflow-hidden">
+                <div class="flex-1 flex flex-col min-h-0 overflow-hidden"
+                    @dragenter.prevent="isDraggingFile = true"
+                    @dragover.prevent="isDraggingFile = true"
+                    @dragleave.prevent="isDraggingFile = false"
+                    @drop.prevent="handleFileDrop($event)">
+
+                    {{-- Drag & Drop overlay --}}
+                    <div x-show="isDraggingFile" x-transition
+                        class="absolute inset-0 z-40 bg-bankos-primary/10 border-2 border-dashed border-bankos-primary rounded-lg flex items-center justify-center pointer-events-none">
+                        <div class="text-center">
+                            <svg class="w-12 h-12 text-bankos-primary mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                            </svg>
+                            <p class="text-sm font-medium text-bankos-primary">Drop file to upload</p>
+                        </div>
+                    </div>
 
                     {{-- Conversation header --}}
                     <div class="flex items-center justify-between px-4 py-3 border-b border-bankos-border bg-white flex-shrink-0">
@@ -263,6 +392,29 @@
                                             </template>
                                         </div>
                                     </div>
+                                    {{-- Notification preferences --}}
+                                    <div class="relative" x-data="{notifySub: false}">
+                                        <button @click="notifySub = !notifySub"
+                                            class="w-full flex items-center justify-between gap-2.5 px-4 py-2 text-sm text-bankos-text hover:bg-gray-50 transition-colors">
+                                            <div class="flex items-center gap-2.5">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                                                </svg>
+                                                <span>Notifications</span>
+                                            </div>
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                            </svg>
+                                        </button>
+                                        <div x-show="notifySub" class="border-t border-bankos-border bg-gray-50">
+                                            <template x-for="opt in [{label:'All messages',val:'all'},{label:'Mentions only',val:'mentions'},{label:'None',val:'none'}]" :key="opt.val">
+                                                <button @click="setNotifyLevel(opt.val); headerMenu = false; notifySub = false"
+                                                    :class="activeConversation.notify_level == opt.val ? 'bg-bankos-primary/10 text-bankos-primary font-medium' : 'text-bankos-text'"
+                                                    class="w-full text-left px-8 py-1.5 text-sm hover:bg-gray-100 transition-colors"
+                                                    x-text="opt.label"></button>
+                                            </template>
+                                        </div>
+                                    </div>
                                     {{-- Group settings (groups only) --}}
                                     <template x-if="activeConversation.is_group">
                                         <div>
@@ -316,6 +468,57 @@
                             class="text-xs font-semibold underline hover:no-underline ml-4 flex-shrink-0">
                             Reconnect
                         </button>
+                    </div>
+
+                    {{-- Bookmarks bar --}}
+                    <div x-show="bookmarks.length > 0" class="flex items-center gap-1.5 px-4 py-1.5 border-b border-bankos-border bg-gray-50 flex-shrink-0 overflow-x-auto">
+                        <svg class="w-3.5 h-3.5 text-bankos-muted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                        </svg>
+                        <template x-for="bm in bookmarks" :key="bm.id">
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-white rounded border border-bankos-border text-[11px] text-bankos-text hover:bg-gray-100 cursor-pointer flex-shrink-0 group">
+                                <a :href="bm.url || '#'" :title="bm.title" target="_blank" class="truncate max-w-[120px]" x-text="bm.title" @click.stop></a>
+                                <button @click.stop="deleteBookmark(bm.id)" class="text-bankos-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </span>
+                        </template>
+                        <button @click="showAddBookmark = true" title="Add Bookmark"
+                            class="p-0.5 rounded text-bankos-muted hover:text-bankos-primary hover:bg-gray-100 transition-colors flex-shrink-0">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    {{-- Scheduled messages banner --}}
+                    <div x-show="scheduledMessages.length > 0"
+                        class="flex items-center justify-between px-4 py-1.5 bg-blue-50 border-b border-blue-200 flex-shrink-0">
+                        <button @click="showScheduledList = !showScheduledList"
+                            class="text-xs text-blue-700 font-medium flex items-center gap-1 hover:underline">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span x-text="scheduledMessages.length + ' scheduled message' + (scheduledMessages.length !== 1 ? 's' : '')"></span>
+                        </button>
+                    </div>
+                    {{-- Scheduled messages list (expandable) --}}
+                    <div x-show="showScheduledList && scheduledMessages.length > 0" x-transition
+                        class="border-b border-blue-200 bg-blue-50/50 px-4 py-2 space-y-1.5 flex-shrink-0 max-h-40 overflow-y-auto">
+                        <template x-for="sm in scheduledMessages" :key="sm.id">
+                            <div class="flex items-center justify-between gap-2 p-2 bg-white rounded-lg border border-blue-200">
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-xs text-bankos-text truncate" x-text="sm.body"></p>
+                                    <p class="text-[10px] text-blue-600" x-text="'Scheduled: ' + sm.scheduled_at"></p>
+                                </div>
+                                <button @click="cancelScheduledMessage(sm.id)" title="Cancel"
+                                    class="p-1 rounded text-bankos-muted hover:text-red-500 transition-colors flex-shrink-0">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </template>
                     </div>
 
                     {{-- Messages area --}}
@@ -426,7 +629,24 @@
 
                                                     {{-- Body text with formatting --}}
                                                     <template x-if="!msg.is_deleted && msg.body">
-                                                        <p class="text-sm whitespace-pre-wrap break-words" x-html="formatMessage(msg.body)"></p>
+                                                        <div>
+                                                            <p class="text-sm whitespace-pre-wrap break-words" x-html="formatMessage(msg.body)"></p>
+                                                            {{-- Link unfurl preview --}}
+                                                            <template x-if="unfurledLinks[msg.id]">
+                                                                <div :class="msg.sender_id === currentUserId ? 'bg-white/10 border-white/20' : 'bg-bankos-bg border-bankos-border'"
+                                                                    class="mt-2 p-2.5 rounded-lg border flex gap-2.5 max-w-[320px]">
+                                                                    <template x-if="unfurledLinks[msg.id].image">
+                                                                        <img :src="unfurledLinks[msg.id].image" class="w-14 h-14 rounded object-cover flex-shrink-0" alt="">
+                                                                    </template>
+                                                                    <div class="min-w-0">
+                                                                        <p :class="msg.sender_id === currentUserId ? 'text-white' : 'text-bankos-text'"
+                                                                            class="text-xs font-semibold truncate" x-text="unfurledLinks[msg.id].title"></p>
+                                                                        <p :class="msg.sender_id === currentUserId ? 'text-white/70' : 'text-bankos-text-sec'"
+                                                                            class="text-[11px] line-clamp-2 mt-0.5" x-text="unfurledLinks[msg.id].description"></p>
+                                                                    </div>
+                                                                </div>
+                                                            </template>
+                                                        </div>
                                                     </template>
 
                                                     {{-- Poll --}}
@@ -574,6 +794,18 @@
                                                     </div>
                                                 </div>
 
+                                                {{-- Thread reply count --}}
+                                                <template x-if="msg.thread_reply_count && msg.thread_reply_count > 0">
+                                                    <button @click="openThread(msg)"
+                                                        :class="msg.sender_id === currentUserId ? 'text-blue-200 hover:text-white' : 'text-bankos-primary hover:text-bankos-primary-dark'"
+                                                        class="text-[11px] font-medium mt-0.5 ml-1 flex items-center gap-1 transition-colors">
+                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                                                        </svg>
+                                                        <span x-text="msg.thread_reply_count + ' repl' + (msg.thread_reply_count === 1 ? 'y' : 'ies')"></span>
+                                                    </button>
+                                                </template>
+
                                                 {{-- Reaction pills --}}
                                                 <template x-if="msg.reactions && Object.keys(msg.reactions).length > 0">
                                                     <div :class="msg.sender_id === currentUserId ? 'justify-end' : 'justify-start'"
@@ -618,6 +850,13 @@
                                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                                     d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                                            </svg>
+                                                        </button>
+                                                        {{-- Reply in Thread --}}
+                                                        <button @click="openThread(msg)" title="Reply in Thread"
+                                                            class="p-1 rounded text-bankos-muted hover:text-bankos-primary hover:bg-gray-100 transition-colors">
+                                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
                                                             </svg>
                                                         </button>
                                                         {{-- Forward --}}
@@ -782,6 +1021,26 @@
                                                         </div>
                                                     </div>
                                                 </template>
+                                                {{-- Custom Emoji tab --}}
+                                                <div class="mb-2 border-t border-bankos-border pt-2 mt-2">
+                                                    <div class="flex items-center justify-between mb-1 px-1">
+                                                        <p class="text-[10px] text-bankos-muted font-medium uppercase">Custom</p>
+                                                        <button @click="showAddCustomEmoji = true; showEmoji = false"
+                                                            class="text-[10px] text-bankos-primary hover:underline">+ Add</button>
+                                                    </div>
+                                                    <div class="flex flex-wrap gap-0.5">
+                                                        <template x-for="ce in customEmojis" :key="ce.id">
+                                                            <button @click="insertEmoji(':' + ce.shortcode + ':'); showEmoji = false"
+                                                                :title="':' + ce.shortcode + ':'"
+                                                                class="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 transition-colors">
+                                                                <img :src="ce.image_url" :alt="ce.shortcode" class="w-5 h-5 object-contain">
+                                                            </button>
+                                                        </template>
+                                                        <template x-if="customEmojis.length === 0">
+                                                            <p class="text-[10px] text-bankos-muted px-1">No custom emoji yet</p>
+                                                        </template>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -796,16 +1055,57 @@
                                 </div>
                             </template>
 
-                            {{-- Textarea --}}
-                            <textarea
-                                x-model="editingMessage ? editBody : newMessage"
-                                @keydown.enter.prevent="handleEnter($event)"
-                                @input="autoResize($event.target); sendTypingIndicator()"
-                                x-ref="messageInput"
-                                rows="1"
-                                :placeholder="editingMessage ? 'Edit your message...' : 'Type a message... (*bold* _italic_ ~strike~ `code`)'"
-                                class="flex-1 resize-none px-3 py-2 text-sm rounded-xl border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary max-h-32 overflow-y-auto leading-relaxed"
-                            ></textarea>
+                            {{-- Textarea wrapper with @mention dropdown --}}
+                            <div class="flex-1 relative">
+                                {{-- @Mention dropdown --}}
+                                <div x-show="showMentionDropdown" x-transition
+                                    class="absolute bottom-full left-0 mb-1 w-64 max-h-48 overflow-y-auto bg-white rounded-xl shadow-lg border border-bankos-border z-50">
+                                    <template x-for="candidate in mentionCandidates" :key="candidate.id || candidate.handle">
+                                        <button @click="insertMention(candidate)"
+                                            class="w-full flex items-center gap-2 px-3 py-2 text-sm text-bankos-text hover:bg-bankos-primary/5 transition-colors text-left">
+                                            <div class="w-6 h-6 rounded-full bg-bankos-primary/10 text-bankos-primary text-[10px] font-semibold flex items-center justify-center flex-shrink-0"
+                                                x-text="candidate.initials || '@'"></div>
+                                            <span class="truncate" x-text="candidate.name || candidate.handle"></span>
+                                        </button>
+                                    </template>
+                                    <template x-if="mentionCandidates.length === 0">
+                                        <p class="px-3 py-2 text-xs text-bankos-muted">No matches</p>
+                                    </template>
+                                </div>
+                                <textarea
+                                    x-model="editingMessage ? editBody : newMessage"
+                                    @keydown.enter.prevent="handleEnter($event)"
+                                    @input="autoResize($event.target); sendTypingIndicator(); checkMentionTrigger($event)"
+                                    @keydown.escape="showMentionDropdown = false"
+                                    x-ref="messageInput"
+                                    rows="1"
+                                    :placeholder="editingMessage ? 'Edit your message...' : 'Type a message... (*bold* _italic_ ~strike~ `code`)'"
+                                    class="w-full resize-none px-3 py-2 text-sm rounded-xl border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary max-h-32 overflow-y-auto leading-relaxed"
+                                ></textarea>
+                            </div>
+
+                            {{-- Schedule button --}}
+                            <template x-if="!editingMessage">
+                                <div class="relative" x-data="{showSched: false}">
+                                    <button @click="showSched = !showSched" title="Schedule Message"
+                                        class="p-2 rounded-xl text-bankos-text-sec hover:bg-gray-100 hover:text-bankos-primary transition-colors flex-shrink-0">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </button>
+                                    <div x-show="showSched" @click.outside="showSched = false" x-transition
+                                        class="absolute bottom-full right-0 mb-2 w-64 bg-white rounded-xl shadow-lg border border-bankos-border z-50 p-3">
+                                        <p class="text-xs font-medium text-bankos-text mb-2">Schedule Message</p>
+                                        <input x-model="scheduleDateTime" type="datetime-local"
+                                            class="w-full px-2 py-1.5 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-1 focus:ring-bankos-primary/30 mb-2">
+                                        <button @click="scheduleMessage(); showSched = false"
+                                            :disabled="!scheduleDateTime || (!newMessage.trim() && !attachedFile)"
+                                            class="w-full px-3 py-1.5 text-xs font-medium rounded-lg bg-bankos-primary text-white hover:bg-bankos-primary-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                                            Schedule
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
 
                             {{-- Send / Save button --}}
                             <button
@@ -819,9 +1119,96 @@
                             </button>
                         </div>
 
-                        <p class="text-[10px] text-bankos-muted mt-1.5">Enter to send &middot; Shift+Enter for new line &middot; *bold* _italic_ ~strike~ `code`</p>
+                        <p class="text-[10px] text-bankos-muted mt-1.5">Enter to send &middot; Shift+Enter for new line &middot; *bold* _italic_ ~strike~ `code` &middot; @mention users</p>
                     </div>
-                </div>
+                </div>{{-- end left column of conversation --}}
+
+                {{-- ═══ THREAD PANEL (right side) ═══ --}}
+                <div x-show="showThreadPanel" x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="translate-x-full opacity-0" x-transition:enter-end="translate-x-0 opacity-100"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="translate-x-0 opacity-100" x-transition:leave-end="translate-x-full opacity-0"
+                    class="w-80 flex-shrink-0 flex flex-col border-l border-bankos-border bg-white overflow-hidden">
+                    {{-- Thread header --}}
+                    <div class="flex items-center justify-between px-4 py-3 border-b border-bankos-border">
+                        <h3 class="text-sm font-semibold text-bankos-text">Thread</h3>
+                        <button @click="showThreadPanel = false" class="p-1 rounded-lg text-bankos-muted hover:bg-gray-100 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    {{-- Parent message --}}
+                    <div x-show="threadParentMessage" class="px-4 py-3 border-b border-bankos-border bg-bankos-bg">
+                        <div class="flex items-center gap-2 mb-1">
+                            <div class="w-6 h-6 rounded-full bg-gray-200 text-gray-600 text-[10px] font-semibold flex items-center justify-center"
+                                x-text="threadParentMessage?.sender_initials"></div>
+                            <span class="text-xs font-semibold text-bankos-text" x-text="threadParentMessage?.sender_name"></span>
+                            <span class="text-[10px] text-bankos-muted" x-text="threadParentMessage?.created_at"></span>
+                        </div>
+                        <p class="text-sm text-bankos-text whitespace-pre-wrap break-words" x-html="formatMessage(threadParentMessage?.body || '')"></p>
+                    </div>
+
+                    {{-- Thread replies --}}
+                    <div class="flex-1 overflow-y-auto px-4 py-3 space-y-2" x-ref="threadContainer">
+                        <div x-show="loadingThread" class="flex justify-center py-6">
+                            <svg class="animate-spin w-5 h-5 text-bankos-primary" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                            </svg>
+                        </div>
+                        <template x-if="threadReplies.length === 0 && !loadingThread">
+                            <p class="text-xs text-bankos-muted text-center py-4">No replies yet</p>
+                        </template>
+                        <template x-for="reply in threadReplies" :key="reply.id">
+                            <div class="flex gap-2">
+                                <div class="w-6 h-6 rounded-full bg-gray-200 text-gray-600 text-[10px] font-semibold flex items-center justify-center flex-shrink-0 mt-0.5"
+                                    x-text="reply.sender_initials"></div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-1 mb-0.5">
+                                        <span class="text-xs font-semibold text-bankos-text" x-text="reply.sender_name"></span>
+                                        <span class="text-[10px] text-bankos-muted" x-text="reply.created_at"></span>
+                                    </div>
+                                    <p class="text-sm text-bankos-text whitespace-pre-wrap break-words" x-html="formatMessage(reply.body || '')"></p>
+                                    <template x-if="reply.attachments && reply.attachments.length > 0">
+                                        <div class="mt-1">
+                                            <template x-for="att in reply.attachments" :key="att.id">
+                                                <a :href="att.url" class="text-xs text-bankos-primary hover:underline flex items-center gap-1" download>
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                                                    <span x-text="att.file_name"></span>
+                                                </a>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    {{-- Thread reply input --}}
+                    <div class="border-t border-bankos-border px-3 py-2 flex items-end gap-2">
+                        <input type="file" x-ref="threadFileInput" class="hidden" @change="threadReplyFile = $event.target.files[0]">
+                        <button @click="$refs.threadFileInput.click()" class="p-1.5 rounded text-bankos-text-sec hover:bg-gray-100 transition-colors flex-shrink-0">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                            </svg>
+                        </button>
+                        <textarea x-model="threadReplyBody"
+                            @keydown.enter.prevent="if (!$event.shiftKey) sendThreadReply()"
+                            rows="1" placeholder="Reply in thread..."
+                            class="flex-1 resize-none px-2.5 py-1.5 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-1 focus:ring-bankos-primary/30 max-h-20 overflow-y-auto"></textarea>
+                        <button @click="sendThreadReply()"
+                            :disabled="!threadReplyBody.trim() && !threadReplyFile"
+                            class="p-1.5 rounded-lg bg-bankos-primary text-white hover:bg-bankos-primary-dark disabled:opacity-40 transition-colors flex-shrink-0">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>{{-- end thread panel --}}
+
+                </div>{{-- end flex row for conversation + thread --}}
             </template>
         </div>
     </div>
@@ -1294,6 +1681,230 @@
     </div>
 
     {{-- ══════════════════════════════════════════════════
+         MODAL — New Channel
+    ══════════════════════════════════════════════════ --}}
+    <div x-show="showNewChannelModal" x-transition.opacity
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+        @keydown.escape.window="showNewChannelModal = false">
+        <div @click.outside="showNewChannelModal = false" x-transition
+            class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-bankos-border">
+                <h3 class="text-sm font-semibold text-bankos-text">New Channel</h3>
+                <button @click="showNewChannelModal = false"
+                    class="p-1 rounded-lg text-bankos-muted hover:bg-gray-100 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="px-4 py-3 space-y-3">
+                <input x-model="channelName" type="text" placeholder="Channel name..."
+                    class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary">
+                <input x-model="channelTopic" type="text" placeholder="Topic (optional)..."
+                    class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary">
+                <label class="flex items-center gap-2 text-sm text-bankos-text">
+                    <input type="checkbox" x-model="channelIsPrivate" class="w-4 h-4 rounded text-bankos-primary border-bankos-border focus:ring-bankos-primary/30">
+                    Private channel
+                </label>
+                <input x-model="userSearch" @input="filterUsers()" type="text" placeholder="Add members..."
+                    class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary">
+                <p class="text-xs text-bankos-text-sec" x-show="channelUserIds.length > 0"
+                    x-text="channelUserIds.length + ' member(s) selected'"></p>
+                <div class="max-h-36 overflow-y-auto space-y-0.5">
+                    <template x-for="u in filteredUsers" :key="u.id">
+                        <label class="flex items-center gap-3 px-2 py-1.5 rounded-xl hover:bg-bankos-primary/5 transition-colors cursor-pointer">
+                            <input type="checkbox" :value="u.id" x-model="channelUserIds"
+                                class="w-4 h-4 rounded text-bankos-primary border-bankos-border focus:ring-bankos-primary/30">
+                            <span class="text-sm text-bankos-text truncate" x-text="u.name"></span>
+                        </label>
+                    </template>
+                </div>
+            </div>
+            <div class="px-4 pb-4 flex justify-end gap-2">
+                <button @click="showNewChannelModal = false"
+                    class="px-4 py-2 text-sm rounded-lg border border-bankos-border text-bankos-text hover:bg-gray-50 transition-colors">Cancel</button>
+                <button @click="createChannel()"
+                    :disabled="!channelName.trim()"
+                    class="px-4 py-2 text-sm rounded-lg bg-bankos-primary text-white hover:bg-bankos-primary-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Create Channel</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════
+         MODAL — Browse Channels
+    ══════════════════════════════════════════════════ --}}
+    <div x-show="showBrowseChannels" x-transition.opacity
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+        @keydown.escape.window="showBrowseChannels = false">
+        <div @click.outside="showBrowseChannels = false" x-transition
+            class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-bankos-border">
+                <h3 class="text-sm font-semibold text-bankos-text">Browse Channels</h3>
+                <button @click="showBrowseChannels = false"
+                    class="p-1 rounded-lg text-bankos-muted hover:bg-gray-100 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="max-h-80 overflow-y-auto">
+                <template x-if="browseChannels.length === 0">
+                    <p class="text-sm text-bankos-muted text-center py-8">No public channels to join</p>
+                </template>
+                <template x-for="ch in browseChannels" :key="ch.id">
+                    <div class="flex items-center justify-between px-5 py-3 border-b border-bankos-border last:border-b-0 hover:bg-gray-50">
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-medium text-bankos-text" x-text="'#' + ch.name"></p>
+                            <p class="text-xs text-bankos-text-sec truncate" x-text="ch.topic || 'No topic set'"></p>
+                            <p class="text-[10px] text-bankos-muted" x-text="(ch.member_count || 0) + ' members'"></p>
+                        </div>
+                        <button @click="joinChannel(ch.id)"
+                            class="px-3 py-1 text-xs font-medium rounded-lg bg-bankos-primary text-white hover:bg-bankos-primary-dark transition-colors flex-shrink-0 ml-3">
+                            Join
+                        </button>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════
+         MODAL — User Status
+    ══════════════════════════════════════════════════ --}}
+    <div x-show="showStatusModal" x-transition.opacity
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+        @keydown.escape.window="showStatusModal = false">
+        <div @click.outside="showStatusModal = false" x-transition
+            class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-bankos-border">
+                <h3 class="text-sm font-semibold text-bankos-text">Set Status</h3>
+                <button @click="showStatusModal = false"
+                    class="p-1 rounded-lg text-bankos-muted hover:bg-gray-100 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="px-5 py-4 space-y-3">
+                {{-- Quick emoji select --}}
+                <div>
+                    <label class="text-xs font-medium text-bankos-text-sec mb-1 block">Emoji</label>
+                    <div class="flex gap-1.5 flex-wrap">
+                        <template x-for="em in ['\u{1F4AC}','\u{1F3E0}','\u{1F912}','\u{1F3DD}\u{FE0F}','\u{1F4BB}','\u{1F680}','\u{1F3AF}','\u{2615}']" :key="em">
+                            <button @click="userStatusEmoji = em"
+                                :class="userStatusEmoji === em ? 'ring-2 ring-bankos-primary bg-bankos-primary/10' : 'hover:bg-gray-100'"
+                                class="w-8 h-8 flex items-center justify-center text-lg rounded-lg transition-all" x-text="em"></button>
+                        </template>
+                    </div>
+                </div>
+                <input x-model="userStatusText" type="text" placeholder="What's your status?"
+                    class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary">
+                <div>
+                    <label class="text-xs font-medium text-bankos-text-sec mb-1 block">Clear after</label>
+                    <select x-model="userStatusUntil"
+                        class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary">
+                        <option value="">Don't clear</option>
+                        <option value="30m">30 minutes</option>
+                        <option value="1h">1 hour</option>
+                        <option value="4h">4 hours</option>
+                        <option value="today">Today</option>
+                    </select>
+                </div>
+
+                {{-- DND toggle --}}
+                <div class="flex items-center justify-between pt-2 border-t border-bankos-border">
+                    <div>
+                        <p class="text-sm font-medium text-bankos-text">Do Not Disturb</p>
+                        <p class="text-xs text-bankos-text-sec">Pause notifications</p>
+                    </div>
+                    <button @click="toggleDnd()"
+                        :class="isDnd ? 'bg-red-500' : 'bg-gray-300'"
+                        class="relative w-10 h-5 rounded-full transition-colors flex-shrink-0">
+                        <span :class="isDnd ? 'translate-x-5' : 'translate-x-0.5'"
+                            class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span>
+                    </button>
+                </div>
+            </div>
+            <div class="px-5 pb-4 flex justify-between gap-2">
+                <button @click="clearUserStatus()"
+                    class="px-4 py-2 text-sm rounded-lg border border-bankos-border text-bankos-text hover:bg-gray-50 transition-colors">Clear Status</button>
+                <button @click="setUserStatus()"
+                    class="px-4 py-2 text-sm rounded-lg bg-bankos-primary text-white hover:bg-bankos-primary-dark transition-colors">Save</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════
+         MODAL — Add Bookmark
+    ══════════════════════════════════════════════════ --}}
+    <div x-show="showAddBookmark" x-transition.opacity
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+        @keydown.escape.window="showAddBookmark = false">
+        <div @click.outside="showAddBookmark = false" x-transition
+            class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-bankos-border">
+                <h3 class="text-sm font-semibold text-bankos-text">Add Bookmark</h3>
+                <button @click="showAddBookmark = false"
+                    class="p-1 rounded-lg text-bankos-muted hover:bg-gray-100 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="px-5 py-4 space-y-3">
+                <input x-model="bookmarkTitle" type="text" placeholder="Bookmark title..."
+                    class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary">
+                <input x-model="bookmarkUrl" type="url" placeholder="URL (optional)..."
+                    class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary">
+            </div>
+            <div class="px-5 pb-4 flex justify-end gap-2">
+                <button @click="showAddBookmark = false"
+                    class="px-4 py-2 text-sm rounded-lg border border-bankos-border text-bankos-text hover:bg-gray-50 transition-colors">Cancel</button>
+                <button @click="addBookmark()"
+                    :disabled="!bookmarkTitle.trim()"
+                    class="px-4 py-2 text-sm rounded-lg bg-bankos-primary text-white hover:bg-bankos-primary-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Add</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════
+         MODAL — Add Custom Emoji
+    ══════════════════════════════════════════════════ --}}
+    <div x-show="showAddCustomEmoji" x-transition.opacity
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+        @keydown.escape.window="showAddCustomEmoji = false">
+        <div @click.outside="showAddCustomEmoji = false" x-transition
+            class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-bankos-border">
+                <h3 class="text-sm font-semibold text-bankos-text">Add Custom Emoji</h3>
+                <button @click="showAddCustomEmoji = false"
+                    class="p-1 rounded-lg text-bankos-muted hover:bg-gray-100 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="px-5 py-4 space-y-3">
+                <input x-model="customEmojiShortcode" type="text" placeholder=":shortcode: (e.g. party_parrot)"
+                    class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary">
+                <div>
+                    <label class="text-xs font-medium text-bankos-text-sec mb-1 block">Emoji Image</label>
+                    <input type="file" x-ref="customEmojiInput" accept="image/*"
+                        @change="customEmojiFile = $event.target.files[0]"
+                        class="w-full text-sm text-bankos-text file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-bankos-border file:bg-bankos-bg file:text-sm file:text-bankos-text hover:file:bg-gray-100">
+                </div>
+            </div>
+            <div class="px-5 pb-4 flex justify-end gap-2">
+                <button @click="showAddCustomEmoji = false"
+                    class="px-4 py-2 text-sm rounded-lg border border-bankos-border text-bankos-text hover:bg-gray-50 transition-colors">Cancel</button>
+                <button @click="uploadCustomEmoji()"
+                    :disabled="!customEmojiShortcode.trim() || !customEmojiFile"
+                    class="px-4 py-2 text-sm rounded-lg bg-bankos-primary text-white hover:bg-bankos-primary-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Upload</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════
          LIGHTBOX — Image viewer
     ══════════════════════════════════════════════════ --}}
     <div x-show="lightboxUrl" x-transition.opacity
@@ -1398,6 +2009,77 @@ function chatApp() {
             { name: 'Objects', emojis: ['\u{1F525}','\u{2B50}','\u{1F31F}','\u{2728}','\u{1F388}','\u{1F389}','\u{1F3C6}','\u{1F4A1}','\u{1F4B0}','\u{1F4BB}','\u{1F4F1}','\u{1F4E7}','\u{1F4C4}','\u{1F512}','\u{1F513}','\u{1F527}','\u{2699}\u{FE0F}','\u{1F6A8}','\u{2705}','\u{274C}','\u{2757}','\u{2753}','\u{1F4CC}','\u{1F4CB}'] },
         ],
 
+        // ── Channels / Tabs state ─────────────────────────────────────────────
+        leftPanelTab: 'chats',    // 'chats' | 'channels' | 'mentions'
+        channels: [],
+        browseChannels: [],
+        showBrowseChannels: false,
+        showNewChannelModal: false,
+        channelName: '',
+        channelTopic: '',
+        channelIsPrivate: false,
+        channelUserIds: [],
+
+        // ── Threads state ─────────────────────────────────────────────────────
+        showThreadPanel: false,
+        threadParentMessage: null,
+        threadReplies: [],
+        threadReplyBody: '',
+        threadReplyFile: null,
+        loadingThread: false,
+
+        // ── Mentions state ───────────���────────────────────────────────────────
+        mentionsList: [],
+        loadingMentions: false,
+        showMentionDropdown: false,
+        mentionQuery: '',
+        mentionCandidates: [],
+        mentionCaretPos: 0,
+
+        // ── User Status / DND state ───────────────────────────────────────────
+        showStatusModal: false,
+        userStatusEmoji: '',
+        userStatusText: '',
+        userStatusUntil: '',
+        currentUserStatus: null,
+        isDnd: false,
+        dndUntil: '',
+
+        // ── Scheduled Messages state ────────────��─────────────────────────────
+        showSchedulePicker: false,
+        scheduleDateTime: '',
+        scheduledMessages: [],
+        showScheduledList: false,
+
+        // ── Bookmarks state ───────────���───────────────────────────────────────
+        bookmarks: [],
+        showAddBookmark: false,
+        bookmarkTitle: '',
+        bookmarkUrl: '',
+
+        // ── Link Unfurling state ──────��───────────────────────────────────────
+        unfurledLinks: {},
+
+        // ── Custom Emoji state ────────────────���───────────────────────────────
+        customEmojis: [],
+        showAddCustomEmoji: false,
+        customEmojiShortcode: '',
+        customEmojiFile: null,
+
+        // ── Reminders state ───────────────────────────────────────────────────
+        reminders: [],
+        showReminders: false,
+        reminderNote: '',
+        reminderAt: '',
+        reminderConvId: null,
+        reminderMsgId: null,
+
+        // ── User Groups state ─────────────────────────────────────────────────
+        userGroups: [],
+
+        // ── Drag & Drop state ───────────────────��─────────────────────────────
+        isDraggingFile: false,
+
         // ── Init ────────────────────────────────────────────────────────────
         async init() {
             await this.loadConversations();
@@ -1430,6 +2112,10 @@ function chatApp() {
 
             // Initial heartbeat
             this.sendHeartbeat();
+
+            // Load supplementary data
+            this.loadCustomEmojis();
+            this.loadUserGroups();
         },
 
         // ── Helpers ─────────────────────────────────────────────────────────
@@ -1510,8 +2196,26 @@ function chatApp() {
             // Escape HTML first
             let text = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-            // Code blocks (``` ... ```)
-            text = text.replace(/```([\s\S]*?)```/g, '<pre class="bg-black/10 rounded px-2 py-1 my-1 text-xs font-mono overflow-x-auto">$1</pre>');
+            // Code blocks with language (```lang\ncode\n```) — dark background with copy button
+            text = text.replace(/```(\w*)\n([\s\S]*?)```/g, function(match, lang, code) {
+                const langLabel = lang ? '<span class="text-[9px] text-gray-400 uppercase">' + lang + '</span>' : '';
+                const codeId = 'code-' + Math.random().toString(36).substr(2, 9);
+                return '<div class="relative group/code my-1">' +
+                    '<div class="flex items-center justify-between px-2 py-1 bg-gray-800 rounded-t-lg">' +
+                    langLabel +
+                    '<button onclick="navigator.clipboard.writeText(document.getElementById(\'' + codeId + '\').textContent)" class="text-[9px] text-gray-400 hover:text-white transition-colors opacity-0 group-hover/code:opacity-100">Copy</button>' +
+                    '</div>' +
+                    '<pre id="' + codeId + '" class="bg-gray-900 text-gray-100 rounded-b-lg px-3 py-2 text-xs font-mono overflow-x-auto whitespace-pre">' + code.trim() + '</pre></div>';
+            });
+            // Simple code blocks (``` ... ```)
+            text = text.replace(/```([\s\S]*?)```/g, function(match, code) {
+                const codeId = 'code-' + Math.random().toString(36).substr(2, 9);
+                return '<div class="relative group/code my-1">' +
+                    '<div class="flex items-center justify-end px-2 py-1 bg-gray-800 rounded-t-lg">' +
+                    '<button onclick="navigator.clipboard.writeText(document.getElementById(\'' + codeId + '\').textContent)" class="text-[9px] text-gray-400 hover:text-white transition-colors opacity-0 group-hover/code:opacity-100">Copy</button>' +
+                    '</div>' +
+                    '<pre id="' + codeId + '" class="bg-gray-900 text-gray-100 rounded-b-lg px-3 py-2 text-xs font-mono overflow-x-auto whitespace-pre">' + code.trim() + '</pre></div>';
+            });
             // Inline code
             text = text.replace(/`([^`]+)`/g, '<code class="bg-black/10 rounded px-1 py-0.5 text-xs font-mono">$1</code>');
             // Bold
@@ -1520,6 +2224,8 @@ function chatApp() {
             text = text.replace(/_([^_]+)_/g, '<em>$1</em>');
             // Strikethrough
             text = text.replace(/~([^~]+)~/g, '<del>$1</del>');
+            // @mentions — highlight with blue pill
+            text = text.replace(/@(\w+(?:\.\w+)*)/g, '<span class="inline-block bg-blue-100 text-blue-700 text-xs font-medium px-1.5 py-0 rounded-full">@$1</span>');
             // URLs
             text = text.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener" class="underline hover:no-underline break-all">$1</a>');
 
@@ -1616,6 +2322,9 @@ function chatApp() {
 
             await this.loadMessages();
             this.fetchPresence();
+            this.loadBookmarks();
+            this.loadScheduledMessages();
+            this.showThreadPanel = false;
 
             const idx = this.conversations.findIndex(c => c.id === conv.id);
             if (idx !== -1) this.conversations[idx].unread_count = 0;
@@ -1752,6 +2461,14 @@ function chatApp() {
                 }
                 this.onSuccess();
                 this.scrollToBottom(true);
+
+                // Auto-unfurl links
+                if (msg.body) {
+                    const urlMatch = msg.body.match(/(https?:\/\/[^\s]+)/);
+                    if (urlMatch) {
+                        this.unfurlLink(urlMatch[1], msg.id);
+                    }
+                }
             } catch {
                 this.onFailure();
                 this.newMessage = body;
@@ -2396,6 +3113,561 @@ function chatApp() {
             } catch {
                 this.onFailure();
             }
+        },
+        // ── Channels ────────────────────────────────────────────────────────
+        async loadChannels() {
+            // Channels are conversations that are channels — filter from loaded convos or fetch separately
+            this.channels = this.conversations.filter(c => c.is_channel);
+        },
+
+        async loadBrowseChannels() {
+            try {
+                const res = await fetch('/chat/channels/browse', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.browseChannels = data.channels ?? [];
+                }
+            } catch {}
+        },
+
+        async createChannel() {
+            if (!this.channelName.trim()) return;
+            try {
+                const res = await fetch('/chat/channels', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({
+                        name: this.channelName.trim(),
+                        topic: this.channelTopic.trim() || undefined,
+                        is_private: this.channelIsPrivate,
+                        user_ids: this.channelUserIds,
+                    }),
+                });
+                if (!res.ok) throw new Error('Failed');
+                this.showNewChannelModal = false;
+                this.channelName = '';
+                this.channelTopic = '';
+                this.channelIsPrivate = false;
+                this.channelUserIds = [];
+                await this.loadConversations(false);
+                this.loadChannels();
+                this.onSuccess();
+            } catch {
+                this.onFailure();
+            }
+        },
+
+        async joinChannel(conversationId) {
+            try {
+                const res = await fetch(`/chat/channels/${conversationId}/join`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': this.csrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                if (!res.ok) throw new Error('Failed');
+                this.showBrowseChannels = false;
+                await this.loadConversations(false);
+                this.loadChannels();
+                this.onSuccess();
+            } catch {
+                this.onFailure();
+            }
+        },
+
+        // ── Threads ────────────────────────────────────────────────────────
+        async openThread(msg) {
+            this.showThreadPanel = true;
+            this.threadParentMessage = msg;
+            this.threadReplies = [];
+            this.threadReplyBody = '';
+            this.threadReplyFile = null;
+            this.loadingThread = true;
+            try {
+                const res = await fetch(`/chat/messages/${msg.id}/thread`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.threadReplies = data.replies ?? data.messages ?? [];
+                }
+            } catch {} finally {
+                this.loadingThread = false;
+            }
+        },
+
+        async sendThreadReply() {
+            if (!this.threadParentMessage) return;
+            if (!this.threadReplyBody.trim() && !this.threadReplyFile) return;
+
+            const fd = new FormData();
+            if (this.threadReplyBody.trim()) fd.append('body', this.threadReplyBody.trim());
+            if (this.threadReplyFile) fd.append('file', this.threadReplyFile);
+
+            this.threadReplyBody = '';
+            this.threadReplyFile = null;
+            if (this.$refs.threadFileInput) this.$refs.threadFileInput.value = '';
+
+            try {
+                const res = await fetch(`/chat/messages/${this.threadParentMessage.id}/thread`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': this.csrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: fd,
+                });
+                if (!res.ok) throw new Error('Failed');
+                const data = await res.json();
+                if (data.message) {
+                    this.threadReplies.push(data.message);
+                }
+                // Update thread count on parent message
+                const idx = this.messages.findIndex(m => m.id === this.threadParentMessage.id);
+                if (idx !== -1) {
+                    this.messages[idx].thread_reply_count = (this.messages[idx].thread_reply_count || 0) + 1;
+                }
+                this.$nextTick(() => {
+                    if (this.$refs.threadContainer) {
+                        this.$refs.threadContainer.scrollTop = this.$refs.threadContainer.scrollHeight;
+                    }
+                });
+                this.onSuccess();
+            } catch {
+                this.onFailure();
+            }
+        },
+
+        // ── Mentions ──────────────────────────────────────────────────────
+        async loadMentions() {
+            this.loadingMentions = true;
+            try {
+                const res = await fetch('/chat/mentions', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.mentionsList = data.mentions ?? [];
+                }
+            } catch {} finally {
+                this.loadingMentions = false;
+            }
+        },
+
+        async goToMention(mention) {
+            if (mention.conversation_id) {
+                const conv = this.conversations.find(c => c.id === mention.conversation_id);
+                if (conv) {
+                    this.leftPanelTab = 'chats';
+                    await this.openConversation(conv);
+                }
+            }
+        },
+
+        checkMentionTrigger(event) {
+            const textarea = event.target;
+            const text = textarea.value;
+            const cursorPos = textarea.selectionStart;
+
+            // Find the @ before cursor
+            const textBefore = text.substring(0, cursorPos);
+            const atMatch = textBefore.match(/@(\w*)$/);
+
+            if (atMatch) {
+                this.mentionQuery = atMatch[1].toLowerCase();
+                this.mentionCaretPos = cursorPos;
+
+                // Filter users and user groups
+                let candidates = [];
+                const users = (this.activeConversation?.participants || this.allUsers).map(u => ({
+                    id: u.id,
+                    name: u.name,
+                    initials: this.getInitials(u.name),
+                    type: 'user',
+                }));
+                const groups = this.userGroups.map(g => ({
+                    id: 'group-' + g.id,
+                    name: g.name,
+                    handle: g.handle,
+                    initials: '@',
+                    type: 'group',
+                }));
+                candidates = [...users, ...groups];
+
+                if (this.mentionQuery) {
+                    candidates = candidates.filter(c =>
+                        (c.name || '').toLowerCase().includes(this.mentionQuery) ||
+                        (c.handle || '').toLowerCase().includes(this.mentionQuery)
+                    );
+                }
+                this.mentionCandidates = candidates.slice(0, 8);
+                this.showMentionDropdown = candidates.length > 0;
+            } else {
+                this.showMentionDropdown = false;
+            }
+        },
+
+        insertMention(candidate) {
+            const textarea = this.$refs.messageInput;
+            const text = this.editingMessage ? this.editBody : this.newMessage;
+            const beforeCursor = text.substring(0, this.mentionCaretPos);
+            const afterCursor = text.substring(this.mentionCaretPos);
+
+            // Replace the @query with @name
+            const atIdx = beforeCursor.lastIndexOf('@');
+            const name = candidate.handle || candidate.name.replace(/\s+/g, '.');
+            const newText = beforeCursor.substring(0, atIdx) + '@' + name + ' ' + afterCursor;
+
+            if (this.editingMessage) {
+                this.editBody = newText;
+            } else {
+                this.newMessage = newText;
+            }
+            this.showMentionDropdown = false;
+            this.$nextTick(() => textarea?.focus());
+        },
+
+        // ── User Status & DND ─────────────────────────────────────────────
+        async setUserStatus() {
+            const untilMap = {
+                '30m': new Date(Date.now() + 30 * 60000).toISOString(),
+                '1h': new Date(Date.now() + 60 * 60000).toISOString(),
+                '4h': new Date(Date.now() + 240 * 60000).toISOString(),
+                'today': new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
+            };
+            try {
+                const res = await fetch('/chat/status', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({
+                        emoji: this.userStatusEmoji,
+                        text: this.userStatusText,
+                        until: untilMap[this.userStatusUntil] || undefined,
+                    }),
+                });
+                if (res.ok) {
+                    this.currentUserStatus = {
+                        emoji: this.userStatusEmoji,
+                        text: this.userStatusText,
+                    };
+                }
+                this.showStatusModal = false;
+                this.onSuccess();
+            } catch {
+                this.onFailure();
+            }
+        },
+
+        async clearUserStatus() {
+            try {
+                await fetch('/chat/status', {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': this.csrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                this.currentUserStatus = null;
+                this.userStatusEmoji = '';
+                this.userStatusText = '';
+                this.userStatusUntil = '';
+                this.showStatusModal = false;
+            } catch {}
+        },
+
+        async toggleDnd() {
+            this.isDnd = !this.isDnd;
+            if (this.isDnd) {
+                try {
+                    await fetch('/chat/dnd', {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': this.csrfToken(),
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: JSON.stringify({
+                            until: new Date(Date.now() + 60 * 60000).toISOString(),
+                        }),
+                    });
+                } catch {}
+            } else {
+                try {
+                    await fetch('/chat/status', {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': this.csrfToken(),
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+                } catch {}
+            }
+        },
+
+        // ── Scheduled Messages ────────────────────────────────────────────
+        async scheduleMessage() {
+            if (!this.activeConversation || !this.scheduleDateTime) return;
+            if (!this.newMessage.trim() && !this.attachedFile) return;
+
+            try {
+                const res = await fetch(`/chat/conversations/${this.activeConversation.id}/schedule`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({
+                        body: this.newMessage.trim(),
+                        scheduled_at: this.scheduleDateTime,
+                    }),
+                });
+                if (!res.ok) throw new Error('Failed');
+                const data = await res.json();
+                if (data.message) {
+                    this.scheduledMessages.push(data.message);
+                }
+                this.newMessage = '';
+                this.scheduleDateTime = '';
+                this.onSuccess();
+            } catch {
+                this.onFailure();
+            }
+        },
+
+        async loadScheduledMessages() {
+            if (!this.activeConversation) return;
+            try {
+                const res = await fetch(`/chat/conversations/${this.activeConversation.id}/scheduled`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.scheduledMessages = data.messages ?? [];
+                }
+            } catch {}
+        },
+
+        async cancelScheduledMessage(messageId) {
+            try {
+                const res = await fetch(`/chat/messages/${messageId}/schedule`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': this.csrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                if (res.ok) {
+                    this.scheduledMessages = this.scheduledMessages.filter(m => m.id !== messageId);
+                }
+            } catch {}
+        },
+
+        // ── Bookmarks ─────────────────────────────────────────────────────
+        async loadBookmarks() {
+            if (!this.activeConversation) return;
+            try {
+                const res = await fetch(`/chat/conversations/${this.activeConversation.id}/bookmarks`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.bookmarks = data.bookmarks ?? [];
+                }
+            } catch {}
+        },
+
+        async addBookmark() {
+            if (!this.activeConversation || !this.bookmarkTitle.trim()) return;
+            try {
+                const res = await fetch(`/chat/conversations/${this.activeConversation.id}/bookmarks`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({
+                        title: this.bookmarkTitle.trim(),
+                        url: this.bookmarkUrl.trim() || undefined,
+                    }),
+                });
+                if (!res.ok) throw new Error('Failed');
+                const data = await res.json();
+                if (data.bookmark) {
+                    this.bookmarks.push(data.bookmark);
+                }
+                this.showAddBookmark = false;
+                this.bookmarkTitle = '';
+                this.bookmarkUrl = '';
+                this.onSuccess();
+            } catch {
+                this.onFailure();
+            }
+        },
+
+        async deleteBookmark(bookmarkId) {
+            try {
+                await fetch(`/chat/bookmarks/${bookmarkId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': this.csrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                this.bookmarks = this.bookmarks.filter(b => b.id !== bookmarkId);
+            } catch {}
+        },
+
+        // ── Notification Level ────────────────────────────────────────────
+        async setNotifyLevel(level) {
+            if (!this.activeConversation) return;
+            try {
+                const res = await fetch(`/chat/conversations/${this.activeConversation.id}/notify-level`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({ level }),
+                });
+                if (res.ok) {
+                    this.activeConversation.notify_level = level;
+                }
+                this.onSuccess();
+            } catch {
+                this.onFailure();
+            }
+        },
+
+        // ── Link Unfurling ────────────────────────────────────────────────
+        async unfurlLink(url, msgId) {
+            if (this.unfurledLinks[msgId]) return;
+            try {
+                const res = await fetch('/chat/unfurl', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({ url }),
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.title || data.description) {
+                        this.unfurledLinks[msgId] = data;
+                    }
+                }
+            } catch {}
+        },
+
+        // ── Custom Emoji ──────────────────────────────────────────────────
+        async loadCustomEmojis() {
+            try {
+                const res = await fetch('/chat/emoji', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.customEmojis = data.emojis ?? [];
+                }
+            } catch {}
+        },
+
+        async uploadCustomEmoji() {
+            if (!this.customEmojiShortcode.trim() || !this.customEmojiFile) return;
+            const fd = new FormData();
+            fd.append('shortcode', this.customEmojiShortcode.trim());
+            fd.append('image', this.customEmojiFile);
+            try {
+                const res = await fetch('/chat/emoji', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': this.csrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: fd,
+                });
+                if (!res.ok) throw new Error('Failed');
+                const data = await res.json();
+                if (data.emoji) {
+                    this.customEmojis.push(data.emoji);
+                }
+                this.showAddCustomEmoji = false;
+                this.customEmojiShortcode = '';
+                this.customEmojiFile = null;
+                if (this.$refs.customEmojiInput) this.$refs.customEmojiInput.value = '';
+                this.onSuccess();
+            } catch {
+                this.onFailure();
+                alert('Could not upload emoji.');
+            }
+        },
+
+        // ── User Groups ───────────────────────────────────────────────────
+        async loadUserGroups() {
+            try {
+                const res = await fetch('/chat/user-groups', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.userGroups = data.groups ?? [];
+                }
+            } catch {}
+        },
+
+        // ── Drag & Drop ──────────────────────────────────────────────────
+        handleFileDrop(event) {
+            this.isDraggingFile = false;
+            const files = event.dataTransfer?.files;
+            if (files && files.length > 0) {
+                const file = files[0];
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('File size must not exceed 10 MB.');
+                    return;
+                }
+                this.attachedFile = file;
+            }
+        },
+
+        // ── Reminders ─────────────────────────────────────────────────────
+        async loadReminders() {
+            try {
+                const res = await fetch('/chat/reminders', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.reminders = data.reminders ?? [];
+                }
+            } catch {}
+        },
+
+        async dismissReminder(reminderId) {
+            try {
+                await fetch(`/chat/reminders/${reminderId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': this.csrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                this.reminders = this.reminders.filter(r => r.id !== reminderId);
+            } catch {}
         },
     };
 }
