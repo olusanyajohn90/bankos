@@ -2207,7 +2207,7 @@ function chatApp() {
                 if (this.taskAssignedTo) payload.assigned_to = this.taskAssignedTo;
                 if (this.taskDueDate) payload.due_date = this.taskDueDate;
 
-                const res = await fetch(`/chat/conversations/${this.activeConversation.id}/task`, {
+                const res = await fetch(`/chat/conversations/${this.activeConversation.id}/tasks`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
