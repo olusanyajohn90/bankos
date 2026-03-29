@@ -236,6 +236,10 @@ class DocumentController extends Controller
 
     public function download(Request $request, Document $document)
     {
+        if (!\Storage::disk('local')->exists($document->file_path)) {
+            abort(404, 'File not found on disk.');
+        }
+
         $this->documentService->logAccess($document, auth()->user(), 'downloaded', $request);
 
         return \Storage::disk('local')->download($document->file_path, $document->file_name);
@@ -243,6 +247,11 @@ class DocumentController extends Controller
 
     public function preview(Request $request, Document $document)
     {
+        if (!\Storage::disk('local')->exists($document->file_path)) {
+            return response('File not available', 404)
+                ->header('Content-Type', 'text/plain');
+        }
+
         $this->documentService->logAccess($document, auth()->user(), 'viewed', $request);
 
         $path = \Storage::disk('local')->path($document->file_path);
