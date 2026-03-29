@@ -337,6 +337,34 @@
                         </div>
                         {{-- Header actions --}}
                         <div class="flex items-center gap-1">
+                            {{-- Audio Call --}}
+                            <button @click="startCall('audio')" title="Audio Call"
+                                class="p-1.5 rounded-lg text-bankos-text-sec hover:bg-gray-100 hover:text-green-600 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                                </svg>
+                            </button>
+                            {{-- Video Call --}}
+                            <button @click="startCall('video')" title="Video Call"
+                                class="p-1.5 rounded-lg text-bankos-text-sec hover:bg-gray-100 hover:text-green-600 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                </svg>
+                            </button>
+                            {{-- Canvas Docs --}}
+                            <button @click="openCanvasPanel()" title="Docs"
+                                class="p-1.5 rounded-lg text-bankos-text-sec hover:bg-gray-100 hover:text-bankos-primary transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                            </button>
+                            {{-- Workflows --}}
+                            <button @click="openWorkflowPanel()" title="Workflows"
+                                class="p-1.5 rounded-lg text-bankos-text-sec hover:bg-gray-100 hover:text-bankos-primary transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                            </button>
                             {{-- Pinned messages --}}
                             <button @click="openPinnedPanel()" title="Pinned Messages"
                                 class="p-1.5 rounded-lg text-bankos-text-sec hover:bg-gray-100 hover:text-bankos-primary transition-colors">
@@ -468,6 +496,24 @@
                             class="text-xs font-semibold underline hover:no-underline ml-4 flex-shrink-0">
                             Reconnect
                         </button>
+                    </div>
+
+                    {{-- Incoming call banner --}}
+                    <div x-show="incomingCall" x-transition
+                        class="flex items-center justify-between px-4 py-3 bg-green-500 text-white border-b border-green-600 flex-shrink-0 animate-pulse">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                            </svg>
+                            <span class="text-sm font-medium" x-text="(incomingCall?.caller_name || 'Someone') + ' is calling...'"></span>
+                            <span class="text-xs opacity-80" x-text="incomingCall?.type === 'video' ? '(Video)' : '(Audio)'"></span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button @click="joinCall()"
+                                class="bg-white text-green-600 px-3 py-1 rounded-full text-sm font-semibold hover:bg-green-50 transition-colors">Accept</button>
+                            <button @click="declineCall()"
+                                class="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold hover:bg-red-600 transition-colors">Decline</button>
+                        </div>
                     </div>
 
                     {{-- Bookmarks bar --}}
@@ -1905,6 +1951,428 @@
     </div>
 
     {{-- ══════════════════════════════════════════════════
+         IN-CALL OVERLAY (LiveKit)
+    ══════════════════════════════════════════════════ --}}
+    <div x-show="inCall" x-transition.opacity class="fixed inset-0 z-[70] bg-gray-900 flex flex-col">
+        {{-- Top bar --}}
+        <div class="flex items-center justify-between px-6 py-4 text-white">
+            <div class="flex items-center gap-3">
+                <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                <span class="text-sm font-medium" x-text="'Call with ' + (activeConversation?.display_name || 'Unknown')"></span>
+                <span class="text-xs px-2 py-0.5 rounded-full bg-white/10" x-text="callType === 'video' ? 'Video' : 'Audio'"></span>
+            </div>
+            <span x-text="callDuration" class="font-mono text-sm text-white/80"></span>
+        </div>
+
+        {{-- Center: Video/Audio grid --}}
+        <div class="flex-1 flex items-center justify-center gap-4 px-8 relative">
+            {{-- Remote participants --}}
+            <div id="remote-video-container" class="flex flex-wrap gap-4 justify-center"></div>
+            {{-- Audio-only state --}}
+            <div x-show="callType === 'audio'" class="text-center">
+                <div class="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-12 h-12 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                    </svg>
+                </div>
+                <p class="text-white/60 text-sm">Audio call in progress</p>
+            </div>
+            {{-- Local video (small, bottom-right) --}}
+            <div id="local-video-container" x-show="callType === 'video' && callVideoOn"
+                class="absolute bottom-4 right-8 w-48 h-36 rounded-lg overflow-hidden border-2 border-white/30 shadow-xl bg-gray-800"></div>
+        </div>
+
+        {{-- Bottom: Controls --}}
+        <div class="flex items-center justify-center gap-4 py-6 bg-gray-800/80">
+            {{-- Mute mic --}}
+            <button @click="toggleCallMute()" :class="callMuted ? 'bg-red-500' : 'bg-gray-600 hover:bg-gray-500'"
+                class="w-12 h-12 rounded-full flex items-center justify-center text-white transition-colors" title="Toggle Microphone">
+                <template x-if="!callMuted">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                    </svg>
+                </template>
+                <template x-if="callMuted">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+                    </svg>
+                </template>
+            </button>
+            {{-- Toggle camera (video calls only) --}}
+            <button x-show="callType === 'video'" @click="toggleCallVideo()"
+                :class="!callVideoOn ? 'bg-red-500' : 'bg-gray-600 hover:bg-gray-500'"
+                class="w-12 h-12 rounded-full flex items-center justify-center text-white transition-colors" title="Toggle Camera">
+                <template x-if="callVideoOn">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                </template>
+                <template x-if="!callVideoOn">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728A9 9 0 015.636 5.636"/>
+                    </svg>
+                </template>
+            </button>
+            {{-- Screen share --}}
+            <button @click="toggleScreenShare()" :class="callScreenSharing ? 'bg-blue-500' : 'bg-gray-600 hover:bg-gray-500'"
+                class="w-12 h-12 rounded-full flex items-center justify-center text-white transition-colors" title="Screen Share">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+            </button>
+            {{-- End call --}}
+            <button @click="endCurrentCall()" class="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center text-white transition-colors" title="End Call">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M5 3a2 2 0 00-2 2v1c0 8.284 6.716 15 15 15h1a2 2 0 002-2v-3.28a1 1 0 00-.684-.948l-4.493-1.498a1 1 0 00-1.21.502l-1.13 2.257a11.042 11.042 0 01-5.516-5.517l2.257-1.128a1 1 0 00.502-1.21L9.228 3.683A1 1 0 008.279 3H5z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════
+         CANVAS / DOCS — Slide-over Panel
+    ══════════════════════════════════════════════════ --}}
+    <div x-show="showCanvasPanel" x-transition.opacity
+        class="fixed inset-0 z-50 flex justify-end bg-black/30"
+        @keydown.escape.window="showCanvasPanel = false">
+        <div @click="showCanvasPanel = false" class="flex-1"></div>
+        <div x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+            x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+            class="w-96 bg-white shadow-xl flex flex-col overflow-hidden" @click.stop>
+            {{-- Header --}}
+            <div class="flex items-center justify-between px-5 py-4 border-b border-bankos-border">
+                <h3 class="text-sm font-semibold text-bankos-text">Docs</h3>
+                <div class="flex items-center gap-2">
+                    <button @click="createCanvas()" class="px-3 py-1 text-xs font-medium rounded-lg bg-bankos-primary text-white hover:bg-bankos-primary-dark transition-colors">
+                        + New Doc
+                    </button>
+                    <button @click="showCanvasPanel = false" class="p-1 rounded-lg text-bankos-muted hover:bg-gray-100 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            {{-- Canvas list --}}
+            <div class="flex-1 overflow-y-auto">
+                <div x-show="canvasLoading" class="flex justify-center py-8">
+                    <svg class="animate-spin w-5 h-5 text-bankos-primary" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                </div>
+                <template x-if="canvasList.length === 0 && !canvasLoading">
+                    <div class="flex flex-col items-center justify-center py-12 px-4 text-center text-bankos-muted">
+                        <svg class="w-10 h-10 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <p class="text-sm">No docs yet</p>
+                        <p class="text-xs mt-1">Create a doc to collaborate with your team</p>
+                    </div>
+                </template>
+                <template x-for="doc in canvasList" :key="doc.id">
+                    <div @click="openCanvasEditor(doc)"
+                        class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors border-b border-bankos-border group">
+                        <div class="w-9 h-9 rounded-lg bg-bankos-primary/10 text-bankos-primary flex items-center justify-center flex-shrink-0">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-bankos-text truncate" x-text="doc.title || 'Untitled'"></p>
+                            <p class="text-[10px] text-bankos-muted" x-text="'by ' + (doc.created_by_name || 'Unknown') + (doc.updated_at ? ' &middot; ' + doc.updated_at : '')"></p>
+                        </div>
+                        <button @click.stop="deleteCanvas(doc.id)" class="p-1 rounded text-bankos-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all" title="Delete">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════
+         CANVAS EDITOR — Modal
+    ══════════════════════════════════════════════════ --}}
+    <div x-show="showCanvasEditor" x-transition.opacity
+        class="fixed inset-0 z-[55] flex items-center justify-center p-4 bg-black/40"
+        @keydown.escape.window="showCanvasEditor = false">
+        <div @click.outside="saveCanvasContent(); showCanvasEditor = false" x-transition
+            class="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+            {{-- Header --}}
+            <div class="flex items-center justify-between px-5 py-3 border-b border-bankos-border">
+                <input x-model="canvasTitle" type="text" placeholder="Document title..."
+                    @blur="saveCanvasContent()"
+                    class="text-base font-semibold text-bankos-text bg-transparent border-none focus:outline-none focus:ring-0 flex-1 mr-4 placeholder-bankos-muted">
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <span x-show="canvasSaving" class="text-[10px] text-bankos-muted">Saving...</span>
+                    <span x-show="canvasSaved && !canvasSaving" class="text-[10px] text-green-600">Saved</span>
+                    <button @click="saveCanvasContent()" class="px-3 py-1 text-xs font-medium rounded-lg bg-bankos-primary text-white hover:bg-bankos-primary-dark transition-colors">
+                        Save
+                    </button>
+                    <button @click="saveCanvasContent(); showCanvasEditor = false" class="p-1 rounded-lg text-bankos-muted hover:bg-gray-100 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            {{-- Toolbar --}}
+            <div class="flex items-center gap-1 px-4 py-2 border-b border-bankos-border bg-gray-50">
+                <button @click="canvasExec('bold')" class="p-1.5 rounded hover:bg-gray-200 text-sm font-bold text-bankos-text" title="Bold">B</button>
+                <button @click="canvasExec('italic')" class="p-1.5 rounded hover:bg-gray-200 text-sm italic text-bankos-text" title="Italic">I</button>
+                <button @click="canvasExec('underline')" class="p-1.5 rounded hover:bg-gray-200 text-sm underline text-bankos-text" title="Underline">U</button>
+                <button @click="canvasExec('strikeThrough')" class="p-1.5 rounded hover:bg-gray-200 text-sm line-through text-bankos-text" title="Strikethrough">S</button>
+                <div class="w-px h-5 bg-bankos-border mx-1"></div>
+                <button @click="canvasExec('formatBlock', '<h2>')" class="p-1.5 rounded hover:bg-gray-200 text-xs font-bold text-bankos-text" title="Heading">H2</button>
+                <button @click="canvasExec('formatBlock', '<h3>')" class="p-1.5 rounded hover:bg-gray-200 text-xs font-bold text-bankos-text" title="Subheading">H3</button>
+                <div class="w-px h-5 bg-bankos-border mx-1"></div>
+                <button @click="canvasExec('insertUnorderedList')" class="p-1.5 rounded hover:bg-gray-200 text-bankos-text" title="Bullet List">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <button @click="canvasExec('insertOrderedList')" class="p-1.5 rounded hover:bg-gray-200 text-xs font-medium text-bankos-text" title="Numbered List">1.</button>
+                <div class="w-px h-5 bg-bankos-border mx-1"></div>
+                <button @click="canvasExec('formatBlock', '<pre>')" class="p-1.5 rounded hover:bg-gray-200 text-xs font-mono text-bankos-text" title="Code Block">&lt;/&gt;</button>
+            </div>
+            {{-- Editor --}}
+            <div contenteditable="true" id="canvas-editor"
+                @blur="saveCanvasContent()"
+                class="flex-1 overflow-y-auto p-5 min-h-[300px] prose prose-sm max-w-none focus:outline-none text-bankos-text"
+                style="line-height: 1.7;"></div>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════
+         WORKFLOW BUILDER — Slide-over Panel
+    ══════════════════════════════════════════════════ --}}
+    <div x-show="showWorkflowPanel" x-transition.opacity
+        class="fixed inset-0 z-50 flex justify-end bg-black/30"
+        @keydown.escape.window="showWorkflowPanel = false">
+        <div @click="showWorkflowPanel = false" class="flex-1"></div>
+        <div x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+            x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
+            class="w-[420px] bg-white shadow-xl flex flex-col overflow-hidden" @click.stop>
+            {{-- Header --}}
+            <div class="flex items-center justify-between px-5 py-4 border-b border-bankos-border">
+                <h3 class="text-sm font-semibold text-bankos-text">Workflows</h3>
+                <div class="flex items-center gap-2">
+                    <button @click="openWorkflowEditor(null)" class="px-3 py-1 text-xs font-medium rounded-lg bg-bankos-primary text-white hover:bg-bankos-primary-dark transition-colors">
+                        + New Workflow
+                    </button>
+                    <button @click="showWorkflowPanel = false" class="p-1 rounded-lg text-bankos-muted hover:bg-gray-100 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            {{-- Workflow list --}}
+            <div class="flex-1 overflow-y-auto">
+                <div x-show="workflowsLoading" class="flex justify-center py-8">
+                    <svg class="animate-spin w-5 h-5 text-bankos-primary" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                </div>
+                <template x-if="workflowsList.length === 0 && !workflowsLoading">
+                    <div class="flex flex-col items-center justify-center py-12 px-4 text-center text-bankos-muted">
+                        <svg class="w-10 h-10 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        <p class="text-sm">No workflows yet</p>
+                        <p class="text-xs mt-1">Automate repetitive tasks with workflows</p>
+                    </div>
+                </template>
+                <template x-for="wf in workflowsList" :key="wf.id">
+                    <div class="px-4 py-3 border-b border-bankos-border hover:bg-gray-50 transition-colors group">
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="flex items-center gap-2 min-w-0 flex-1">
+                                <svg class="w-4 h-4 flex-shrink-0" :class="wf.is_active ? 'text-green-500' : 'text-bankos-muted'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                                <span class="text-sm font-medium text-bankos-text truncate" x-text="wf.name"></span>
+                            </div>
+                            <div class="flex items-center gap-1 flex-shrink-0">
+                                {{-- Toggle active --}}
+                                <button @click="toggleWorkflow(wf)"
+                                    :class="wf.is_active ? 'bg-green-500' : 'bg-gray-300'"
+                                    class="relative w-8 h-4 rounded-full transition-colors flex-shrink-0" title="Toggle active">
+                                    <span :class="wf.is_active ? 'translate-x-4' : 'translate-x-0.5'"
+                                        class="absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform"></span>
+                                </button>
+                                {{-- Run --}}
+                                <button @click="runWorkflow(wf.id)" class="p-1 rounded text-bankos-muted hover:text-green-600 hover:bg-green-50 transition-colors" title="Run now">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </button>
+                                {{-- Edit --}}
+                                <button @click="openWorkflowEditor(wf)" class="p-1 rounded text-bankos-muted hover:text-bankos-primary hover:bg-gray-100 transition-colors" title="Edit">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                </button>
+                                {{-- Delete --}}
+                                <button @click="deleteWorkflow(wf.id)" class="p-1 rounded text-bankos-muted hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all" title="Delete">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 text-[10px] text-bankos-muted">
+                            <span x-text="'Trigger: ' + (wf.trigger?.type || 'Unknown').replace('_', ' ')"></span>
+                            <span x-text="(wf.steps?.length || 0) + ' step(s)'"></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════
+         WORKFLOW EDITOR — Modal
+    ══════════════════════════════════════════════════ --}}
+    <div x-show="showWorkflowEditor" x-transition.opacity
+        class="fixed inset-0 z-[55] flex items-center justify-center p-4 bg-black/40"
+        @keydown.escape.window="showWorkflowEditor = false">
+        <div @click.outside="showWorkflowEditor = false" x-transition
+            class="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[85vh] flex flex-col overflow-hidden">
+            {{-- Header --}}
+            <div class="flex items-center justify-between px-5 py-4 border-b border-bankos-border">
+                <h3 class="text-sm font-semibold text-bankos-text" x-text="wfEditId ? 'Edit Workflow' : 'New Workflow'"></h3>
+                <button @click="showWorkflowEditor = false" class="p-1 rounded-lg text-bankos-muted hover:bg-gray-100 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            {{-- Body --}}
+            <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                {{-- Name --}}
+                <div>
+                    <label class="text-xs font-medium text-bankos-text-sec mb-1 block">Name</label>
+                    <input x-model="wfEditName" type="text" placeholder="Workflow name..."
+                        class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary">
+                </div>
+                {{-- Description --}}
+                <div>
+                    <label class="text-xs font-medium text-bankos-text-sec mb-1 block">Description (optional)</label>
+                    <textarea x-model="wfEditDescription" rows="2" placeholder="What does this workflow do?"
+                        class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary resize-none"></textarea>
+                </div>
+                {{-- Trigger --}}
+                <div>
+                    <label class="text-xs font-medium text-bankos-text-sec mb-1 block">Trigger</label>
+                    <select x-model="wfEditTriggerType"
+                        class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30 focus:border-bankos-primary">
+                        <option value="keyword">Message contains keyword</option>
+                        <option value="new_member">New member joins</option>
+                        <option value="scheduled">Scheduled (cron)</option>
+                        <option value="user_message">Message from specific user</option>
+                    </select>
+                    {{-- Trigger config --}}
+                    <div class="mt-2">
+                        <template x-if="wfEditTriggerType === 'keyword'">
+                            <input x-model="wfEditTriggerConfig" type="text" placeholder="Keyword to match..."
+                                class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30">
+                        </template>
+                        <template x-if="wfEditTriggerType === 'scheduled'">
+                            <input x-model="wfEditTriggerConfig" type="text" placeholder="Cron expression (e.g. 0 9 * * 1-5)"
+                                class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30">
+                        </template>
+                        <template x-if="wfEditTriggerType === 'user_message'">
+                            <select x-model="wfEditTriggerConfig"
+                                class="w-full px-3 py-2 text-sm rounded-lg border border-bankos-border bg-bankos-bg focus:outline-none focus:ring-2 focus:ring-bankos-primary/30">
+                                <option value="">Select user...</option>
+                                <template x-for="u in allUsers" :key="u.id">
+                                    <option :value="u.id" x-text="u.name"></option>
+                                </template>
+                            </select>
+                        </template>
+                    </div>
+                </div>
+                {{-- Steps --}}
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-xs font-medium text-bankos-text-sec">Steps</label>
+                        <button @click="wfEditSteps.push({action: 'send_message', config: ''})"
+                            class="text-xs text-bankos-primary hover:underline">+ Add Step</button>
+                    </div>
+                    <div class="space-y-2">
+                        <template x-for="(step, idx) in wfEditSteps" :key="idx">
+                            <div class="flex items-start gap-2 p-3 bg-bankos-bg rounded-lg border border-bankos-border">
+                                <span class="text-[10px] font-bold text-bankos-muted mt-2" x-text="(idx + 1) + '.'"></span>
+                                <div class="flex-1 space-y-2">
+                                    <select x-model="step.action"
+                                        class="w-full px-2 py-1.5 text-xs rounded-lg border border-bankos-border bg-white focus:outline-none focus:ring-1 focus:ring-bankos-primary/30">
+                                        <option value="send_message">Send message</option>
+                                        <option value="create_task">Create task</option>
+                                        <option value="add_reaction">Add reaction</option>
+                                        <option value="send_notification">Send notification</option>
+                                        <option value="webhook">Webhook</option>
+                                    </select>
+                                    {{-- Config based on action --}}
+                                    <template x-if="step.action === 'send_message'">
+                                        <textarea x-model="step.config" rows="2" placeholder="Message body..."
+                                            class="w-full px-2 py-1.5 text-xs rounded-lg border border-bankos-border bg-white focus:outline-none focus:ring-1 focus:ring-bankos-primary/30 resize-none"></textarea>
+                                    </template>
+                                    <template x-if="step.action === 'create_task'">
+                                        <input x-model="step.config" type="text" placeholder="Task title..."
+                                            class="w-full px-2 py-1.5 text-xs rounded-lg border border-bankos-border bg-white focus:outline-none focus:ring-1 focus:ring-bankos-primary/30">
+                                    </template>
+                                    <template x-if="step.action === 'add_reaction'">
+                                        <input x-model="step.config" type="text" placeholder="Emoji (e.g. thumbs up)"
+                                            class="w-full px-2 py-1.5 text-xs rounded-lg border border-bankos-border bg-white focus:outline-none focus:ring-1 focus:ring-bankos-primary/30">
+                                    </template>
+                                    <template x-if="step.action === 'send_notification'">
+                                        <input x-model="step.config" type="text" placeholder="Notification message..."
+                                            class="w-full px-2 py-1.5 text-xs rounded-lg border border-bankos-border bg-white focus:outline-none focus:ring-1 focus:ring-bankos-primary/30">
+                                    </template>
+                                    <template x-if="step.action === 'webhook'">
+                                        <input x-model="step.config" type="url" placeholder="Webhook URL..."
+                                            class="w-full px-2 py-1.5 text-xs rounded-lg border border-bankos-border bg-white focus:outline-none focus:ring-1 focus:ring-bankos-primary/30">
+                                    </template>
+                                </div>
+                                <div class="flex flex-col gap-0.5 flex-shrink-0">
+                                    <button @click="if (idx > 0) { let t = wfEditSteps[idx]; wfEditSteps[idx] = wfEditSteps[idx-1]; wfEditSteps[idx-1] = t; wfEditSteps = [...wfEditSteps]; }"
+                                        :disabled="idx === 0" class="p-0.5 rounded text-bankos-muted hover:text-bankos-text disabled:opacity-30" title="Move up">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                                    </button>
+                                    <button @click="if (idx < wfEditSteps.length - 1) { let t = wfEditSteps[idx]; wfEditSteps[idx] = wfEditSteps[idx+1]; wfEditSteps[idx+1] = t; wfEditSteps = [...wfEditSteps]; }"
+                                        :disabled="idx === wfEditSteps.length - 1" class="p-0.5 rounded text-bankos-muted hover:text-bankos-text disabled:opacity-30" title="Move down">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </button>
+                                    <button @click="wfEditSteps.splice(idx, 1)" class="p-0.5 rounded text-bankos-muted hover:text-red-500" title="Remove">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                        <template x-if="wfEditSteps.length === 0">
+                            <p class="text-xs text-bankos-muted text-center py-3">No steps added yet. Click "+ Add Step" above.</p>
+                        </template>
+                    </div>
+                </div>
+            </div>
+            {{-- Footer --}}
+            <div class="px-5 py-4 border-t border-bankos-border flex justify-end gap-2">
+                <button @click="showWorkflowEditor = false"
+                    class="px-4 py-2 text-sm rounded-lg border border-bankos-border text-bankos-text hover:bg-gray-50 transition-colors">Cancel</button>
+                <button @click="saveWorkflow()"
+                    :disabled="!wfEditName.trim()"
+                    class="px-4 py-2 text-sm rounded-lg bg-bankos-primary text-white hover:bg-bankos-primary-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    <span x-text="wfEditId ? 'Update' : 'Create'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════
          LIGHTBOX — Image viewer
     ══════════════════════════════════════════════════ --}}
     <div x-show="lightboxUrl" x-transition.opacity
@@ -2080,6 +2548,40 @@ function chatApp() {
         // ── Drag & Drop state ───────────────────��─────────────────────────────
         isDraggingFile: false,
 
+        // ── Call (LiveKit) state ─────────────────────────────────────────────
+        inCall: false,
+        callId: null,
+        callType: 'audio',
+        callMuted: false,
+        callVideoOn: false,
+        callScreenSharing: false,
+        callDuration: '00:00',
+        callTimer: null,
+        incomingCall: null,
+        livekitRoom: null,
+
+        // ── Canvas / Docs state ──────────────────────────────────────────────
+        showCanvasPanel: false,
+        showCanvasEditor: false,
+        canvasList: [],
+        canvasLoading: false,
+        canvasActiveId: null,
+        canvasTitle: '',
+        canvasSaving: false,
+        canvasSaved: false,
+
+        // ── Workflow Builder state ────────────────────────────────────────────
+        showWorkflowPanel: false,
+        showWorkflowEditor: false,
+        workflowsList: [],
+        workflowsLoading: false,
+        wfEditId: null,
+        wfEditName: '',
+        wfEditDescription: '',
+        wfEditTriggerType: 'keyword',
+        wfEditTriggerConfig: '',
+        wfEditSteps: [],
+
         // ── Init ────────────────────────────────────────────────────────────
         async init() {
             await this.loadConversations();
@@ -2112,6 +2614,11 @@ function chatApp() {
 
             // Initial heartbeat
             this.sendHeartbeat();
+
+            // Poll for incoming calls every 5s
+            setInterval(() => {
+                if (this.pollingActive) this.checkIncomingCall();
+            }, 5000);
 
             // Load supplementary data
             this.loadCustomEmojis();
@@ -3678,7 +4185,384 @@ function chatApp() {
                 this.reminders = this.reminders.filter(r => r.id !== reminderId);
             } catch {}
         },
+
+        // ── Calls (LiveKit) ─────────────────────────────────────────────────
+        async startCall(type) {
+            if (!this.activeConversation) return;
+            try {
+                const res = await fetch(`/chat/conversations/${this.activeConversation.id}/call`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrfToken(), 'Accept': 'application/json' },
+                    body: JSON.stringify({ type }),
+                });
+                if (!res.ok) { alert('Failed to start call'); return; }
+                const data = await res.json();
+                await this.connectToLiveKit(data.token, data.ws_url, type);
+                this.callId = data.call_id;
+                this.inCall = true;
+                this.callType = type;
+                this.startCallTimer();
+            } catch (e) { console.error('startCall error', e); }
+        },
+
+        async joinCall(callId) {
+            callId = callId || this.incomingCall?.id;
+            if (!callId) return;
+            try {
+                const res = await fetch(`/chat/calls/${callId}/join`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': this.csrfToken(), 'Accept': 'application/json' },
+                });
+                if (!res.ok) { alert('Failed to join call'); return; }
+                const data = await res.json();
+                await this.connectToLiveKit(data.token, data.ws_url, data.type || 'audio');
+                this.callId = callId;
+                this.inCall = true;
+                this.callType = data.type || 'audio';
+                this.incomingCall = null;
+                this.startCallTimer();
+            } catch (e) { console.error('joinCall error', e); }
+        },
+
+        async declineCall() {
+            if (!this.incomingCall) return;
+            try {
+                await fetch(`/chat/calls/${this.incomingCall.id}/decline`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': this.csrfToken() },
+                });
+            } catch {}
+            this.incomingCall = null;
+        },
+
+        async connectToLiveKit(token, wsUrl, type) {
+            if (typeof LivekitClient === 'undefined') {
+                console.error('LiveKit SDK not loaded');
+                alert('Call feature is not available - LiveKit SDK failed to load.');
+                return;
+            }
+            const room = new LivekitClient.Room({ adaptiveStream: true, dynacast: true });
+
+            room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+                const container = document.getElementById('remote-video-container');
+                if (!container) return;
+                const el = track.attach();
+                el.setAttribute('data-participant', participant.identity);
+                el.style.maxWidth = '400px';
+                el.style.borderRadius = '8px';
+                container.appendChild(el);
+            });
+
+            room.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track) => {
+                track.detach().forEach(el => el.remove());
+            });
+
+            room.on(LivekitClient.RoomEvent.Disconnected, () => {
+                this.cleanupCall();
+            });
+
+            await room.connect(wsUrl, token);
+
+            if (type === 'video') {
+                await room.localParticipant.enableCameraAndMicrophone();
+                this.callVideoOn = true;
+            } else {
+                await room.localParticipant.setMicrophoneEnabled(true);
+            }
+
+            // Attach local video
+            room.localParticipant.videoTrackPublications.forEach(pub => {
+                if (pub.track) {
+                    const el = pub.track.attach();
+                    el.style.width = '100%';
+                    el.style.borderRadius = '8px';
+                    const localContainer = document.getElementById('local-video-container');
+                    if (localContainer) localContainer.appendChild(el);
+                }
+            });
+
+            this.livekitRoom = room;
+        },
+
+        async toggleCallMute() {
+            if (!this.livekitRoom) return;
+            this.callMuted = !this.callMuted;
+            await this.livekitRoom.localParticipant.setMicrophoneEnabled(!this.callMuted);
+        },
+
+        async toggleCallVideo() {
+            if (!this.livekitRoom) return;
+            this.callVideoOn = !this.callVideoOn;
+            await this.livekitRoom.localParticipant.setCameraEnabled(this.callVideoOn);
+        },
+
+        async toggleScreenShare() {
+            if (!this.livekitRoom) return;
+            this.callScreenSharing = !this.callScreenSharing;
+            await this.livekitRoom.localParticipant.setScreenShareEnabled(this.callScreenSharing);
+        },
+
+        async endCurrentCall() {
+            if (this.callId) {
+                try {
+                    await fetch(`/chat/calls/${this.callId}/end`, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': this.csrfToken() },
+                    });
+                } catch {}
+            }
+            if (this.livekitRoom) {
+                this.livekitRoom.disconnect();
+                this.livekitRoom = null;
+            }
+            this.cleanupCall();
+        },
+
+        cleanupCall() {
+            document.getElementById('remote-video-container')?.replaceChildren();
+            document.getElementById('local-video-container')?.replaceChildren();
+            this.inCall = false;
+            this.callId = null;
+            this.callMuted = false;
+            this.callVideoOn = false;
+            this.callScreenSharing = false;
+            clearInterval(this.callTimer);
+            this.callDuration = '00:00';
+        },
+
+        startCallTimer() {
+            let seconds = 0;
+            clearInterval(this.callTimer);
+            this.callTimer = setInterval(() => {
+                seconds++;
+                const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const s = (seconds % 60).toString().padStart(2, '0');
+                this.callDuration = `${m}:${s}`;
+            }, 1000);
+        },
+
+        async checkIncomingCall() {
+            if (!this.activeConversation || this.inCall) return;
+            try {
+                const res = await fetch(`/chat/conversations/${this.activeConversation.id}/active-call`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.call && data.call.status === 'ringing' && data.call.initiated_by != this.currentUserId) {
+                        this.incomingCall = { id: data.call.id, type: data.call.type, caller_name: data.call.initiated_by_name ?? 'Someone' };
+                    } else {
+                        this.incomingCall = null;
+                    }
+                }
+            } catch {}
+        },
+
+        // ── Canvas / Docs ────────────────────────────────────────────────────
+        async openCanvasPanel() {
+            this.showCanvasPanel = true;
+            await this.loadCanvasList();
+        },
+
+        async loadCanvasList() {
+            if (!this.activeConversation) return;
+            this.canvasLoading = true;
+            try {
+                const res = await fetch(`/chat/conversations/${this.activeConversation.id}/canvas`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.canvasList = data.canvases ?? [];
+                }
+            } catch {}
+            this.canvasLoading = false;
+        },
+
+        async createCanvas() {
+            if (!this.activeConversation) return;
+            try {
+                const res = await fetch(`/chat/conversations/${this.activeConversation.id}/canvas`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrfToken(), 'Accept': 'application/json' },
+                    body: JSON.stringify({ title: 'Untitled Document', content: '' }),
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    await this.loadCanvasList();
+                    if (data.canvas) this.openCanvasEditor(data.canvas);
+                }
+            } catch (e) { console.error('createCanvas error', e); }
+        },
+
+        async openCanvasEditor(doc) {
+            this.canvasActiveId = doc.id;
+            this.canvasTitle = doc.title || 'Untitled';
+            this.canvasSaved = false;
+            this.showCanvasEditor = true;
+            // Load full content
+            try {
+                const res = await fetch(`/chat/canvas/${doc.id}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const editor = document.getElementById('canvas-editor');
+                    if (editor) editor.innerHTML = data.canvas?.content || '';
+                    this.canvasTitle = data.canvas?.title || 'Untitled';
+                }
+            } catch {}
+        },
+
+        canvasExec(command, value = null) {
+            document.execCommand(command, false, value);
+            document.getElementById('canvas-editor')?.focus();
+        },
+
+        async saveCanvasContent() {
+            if (!this.canvasActiveId) return;
+            const editor = document.getElementById('canvas-editor');
+            if (!editor) return;
+            this.canvasSaving = true;
+            this.canvasSaved = false;
+            try {
+                const res = await fetch(`/chat/canvas/${this.canvasActiveId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrfToken(), 'Accept': 'application/json' },
+                    body: JSON.stringify({ title: this.canvasTitle, content: editor.innerHTML }),
+                });
+                if (res.ok) this.canvasSaved = true;
+            } catch {}
+            this.canvasSaving = false;
+        },
+
+        async deleteCanvas(canvasId) {
+            if (!confirm('Delete this document?')) return;
+            try {
+                await fetch(`/chat/canvas/${canvasId}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': this.csrfToken(), 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                this.canvasList = this.canvasList.filter(c => c.id !== canvasId);
+                if (this.canvasActiveId === canvasId) {
+                    this.showCanvasEditor = false;
+                    this.canvasActiveId = null;
+                }
+            } catch {}
+        },
+
+        // ── Workflow Builder ─────────────────────────────────────────────────
+        async openWorkflowPanel() {
+            this.showWorkflowPanel = true;
+            await this.loadWorkflows();
+        },
+
+        async loadWorkflows() {
+            this.workflowsLoading = true;
+            try {
+                const res = await fetch('/chat/workflows', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.workflowsList = data.workflows ?? [];
+                }
+            } catch {}
+            this.workflowsLoading = false;
+        },
+
+        openWorkflowEditor(wf) {
+            if (wf) {
+                this.wfEditId = wf.id;
+                this.wfEditName = wf.name || '';
+                this.wfEditDescription = wf.description || '';
+                this.wfEditTriggerType = wf.trigger?.type || 'keyword';
+                this.wfEditTriggerConfig = wf.trigger?.config || '';
+                this.wfEditSteps = (wf.steps || []).map(s => ({ action: s.action, config: s.config || '' }));
+            } else {
+                this.wfEditId = null;
+                this.wfEditName = '';
+                this.wfEditDescription = '';
+                this.wfEditTriggerType = 'keyword';
+                this.wfEditTriggerConfig = '';
+                this.wfEditSteps = [{ action: 'send_message', config: '' }];
+            }
+            this.showWorkflowEditor = true;
+        },
+
+        async saveWorkflow() {
+            if (!this.wfEditName.trim()) return;
+            const payload = {
+                name: this.wfEditName,
+                description: this.wfEditDescription,
+                trigger: { type: this.wfEditTriggerType, config: this.wfEditTriggerConfig },
+                steps: this.wfEditSteps.map(s => ({ action: s.action, config: s.config })),
+                conversation_id: this.activeConversation?.id || null,
+            };
+            try {
+                let res;
+                if (this.wfEditId) {
+                    res = await fetch(`/chat/workflows/${this.wfEditId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrfToken(), 'Accept': 'application/json' },
+                        body: JSON.stringify(payload),
+                    });
+                } else {
+                    res = await fetch('/chat/workflows', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrfToken(), 'Accept': 'application/json' },
+                        body: JSON.stringify(payload),
+                    });
+                }
+                if (res.ok) {
+                    this.showWorkflowEditor = false;
+                    await this.loadWorkflows();
+                } else {
+                    alert('Failed to save workflow');
+                }
+            } catch (e) { console.error('saveWorkflow error', e); }
+        },
+
+        async toggleWorkflow(wf) {
+            try {
+                const res = await fetch(`/chat/workflows/${wf.id}/toggle`, {
+                    method: 'PATCH',
+                    headers: { 'X-CSRF-TOKEN': this.csrfToken(), 'Accept': 'application/json' },
+                });
+                if (res.ok) {
+                    wf.is_active = !wf.is_active;
+                }
+            } catch {}
+        },
+
+        async runWorkflow(wfId) {
+            try {
+                const res = await fetch(`/chat/workflows/${wfId}/run`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': this.csrfToken(), 'Accept': 'application/json' },
+                });
+                if (res.ok) {
+                    alert('Workflow run started successfully');
+                } else {
+                    alert('Failed to run workflow');
+                }
+            } catch {}
+        },
+
+        async deleteWorkflow(wfId) {
+            if (!confirm('Delete this workflow?')) return;
+            try {
+                await fetch(`/chat/workflows/${wfId}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': this.csrfToken(), 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                this.workflowsList = this.workflowsList.filter(w => w.id !== wfId);
+            } catch {}
+        },
     };
 }
 </script>
+
+{{-- LiveKit JS SDK --}}
+<script src="https://unpkg.com/livekit-client/dist/livekit-client.umd.min.js"></script>
 @endpush

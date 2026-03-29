@@ -31,4 +31,10 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'livekit' => [
+        'api_key' => env('LIVEKIT_API_KEY', 'devkey'),
+        'api_secret' => env('LIVEKIT_API_SECRET', 'secret'),
+        'host' => env('LIVEKIT_HOST', 'http://localhost:7880'),
+    ],
+
 ];

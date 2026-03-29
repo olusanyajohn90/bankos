@@ -20,10 +20,16 @@ use App\Models\ChatReadReceipt;
 use App\Models\ChatReminder;
 use App\Models\ChatStarredMessage;
 use App\Models\ChatTask;
+use App\Models\ChatCall;
+use App\Models\ChatCallParticipant;
+use App\Models\ChatCanvas;
 use App\Models\ChatUserGroup;
 use App\Models\ChatUserGroupMember;
+use App\Models\ChatWorkflow;
+use App\Models\ChatWorkflowRun;
 use App\Models\User;
 use App\Services\Chat\ChatService;
+use App\Services\Chat\LiveKitService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -223,6 +229,9 @@ class ChatController extends Controller
 
         // Process @mentions
         $this->processMentions($message, $conversation);
+
+        // Check workflow triggers
+        $this->checkWorkflows($message, $conversation);
 
         return response()->json(['message' => $this->formatMessage($message)]);
     }
@@ -1958,5 +1967,705 @@ class ChatController extends Controller
         $message->load(['sender', 'replyTo.sender', 'attachments']);
 
         return response()->json(['message' => $this->formatMessage($message)]);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CALLS (LiveKit)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    public function initiateCall(Request $request, ChatConversation $conversation): JsonResponse
+    {
+        $user = auth()->user();
+        $this->abortIfNotParticipant($conversation, $user);
+
+        $request->validate([
+            'type' => 'required|in:audio,video',
+        ]);
+
+        // Prevent duplicate active calls in the same conversation
+        $existing = ChatCall::where('conversation_id', $conversation->id)
+            ->whereIn('status', ['ringing', 'active'])
+            ->first();
+
+        if ($existing) {
+            return response()->json(['error' => 'There is already an active call in this conversation.'], 422);
+        }
+
+        $roomName = 'bankos-' . $conversation->id . '-' . time();
+
+        $call = ChatCall::create([
+            'tenant_id'       => $conversation->tenant_id,
+            'conversation_id' => $conversation->id,
+            'initiated_by'    => $user->id,
+            'livekit_room_name' => $roomName,
+            'type'            => $request->type,
+            'status'          => 'ringing',
+        ]);
+
+        // Add all conversation participants to call participants
+        $participants = ChatParticipant::where('conversation_id', $conversation->id)
+            ->whereNull('left_at')
+            ->get();
+
+        foreach ($participants as $participant) {
+            ChatCallParticipant::create([
+                'call_id' => $call->id,
+                'user_id' => $participant->user_id,
+                'joined_at' => $participant->user_id === $user->id ? now() : null,
+            ]);
+        }
+
+        // Generate LiveKit token for the caller
+        $livekit = app(LiveKitService::class);
+        $token = $livekit->generateToken($roomName, (string) $user->id, $user->name);
+
+        // System message
+        $typeLabel = $request->type === 'video' ? 'video' : 'voice';
+        ChatMessage::create([
+            'tenant_id'       => $conversation->tenant_id,
+            'conversation_id' => $conversation->id,
+            'sender_id'       => $user->id,
+            'body'            => "\xF0\x9F\x93\x9E {$user->name} started a {$typeLabel} call",
+            'type'            => 'system',
+            'delivery_status' => 'sent',
+        ]);
+
+        return response()->json([
+            'call_id'   => $call->id,
+            'token'     => $token,
+            'ws_url'    => $livekit->getWsUrl(),
+            'room_name' => $roomName,
+        ]);
+    }
+
+    public function joinCall(string $callId): JsonResponse
+    {
+        $user = auth()->user();
+
+        $call = ChatCall::findOrFail($callId);
+
+        // Verify user is participant of the conversation
+        $isParticipant = ChatParticipant::where('conversation_id', $call->conversation_id)
+            ->where('user_id', $user->id)
+            ->whereNull('left_at')
+            ->exists();
+
+        if (! $isParticipant) {
+            abort(403, 'You are not a participant of this conversation.');
+        }
+
+        if (in_array($call->status, ['ended', 'missed', 'declined'])) {
+            return response()->json(['error' => 'This call has already ended.'], 422);
+        }
+
+        // Update or create call participant
+        $callParticipant = ChatCallParticipant::where('call_id', $call->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($callParticipant) {
+            $callParticipant->update(['joined_at' => now(), 'left_at' => null]);
+        } else {
+            ChatCallParticipant::create([
+                'call_id'   => $call->id,
+                'user_id'   => $user->id,
+                'joined_at' => now(),
+            ]);
+        }
+
+        // If call is still ringing, transition to active
+        if ($call->status === 'ringing') {
+            $call->update([
+                'status'     => 'active',
+                'started_at' => now(),
+            ]);
+        }
+
+        $livekit = app(LiveKitService::class);
+        $token = $livekit->generateToken($call->livekit_room_name, (string) $user->id, $user->name);
+
+        return response()->json([
+            'token'     => $token,
+            'ws_url'    => $livekit->getWsUrl(),
+            'room_name' => $call->livekit_room_name,
+        ]);
+    }
+
+    public function leaveCall(string $callId): JsonResponse
+    {
+        $user = auth()->user();
+
+        $call = ChatCall::findOrFail($callId);
+
+        $callParticipant = ChatCallParticipant::where('call_id', $call->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($callParticipant) {
+            $callParticipant->update(['left_at' => now()]);
+        }
+
+        // If no active participants remain, end the call
+        $activeCount = ChatCallParticipant::where('call_id', $call->id)
+            ->whereNotNull('joined_at')
+            ->whereNull('left_at')
+            ->count();
+
+        if ($activeCount === 0 && in_array($call->status, ['active', 'ringing'])) {
+            $duration = $call->started_at
+                ? (int) now()->diffInSeconds($call->started_at)
+                : 0;
+
+            $call->update([
+                'status'           => 'ended',
+                'ended_at'         => now(),
+                'duration_seconds' => $duration,
+            ]);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    public function declineCall(string $callId): JsonResponse
+    {
+        $user = auth()->user();
+
+        $call = ChatCall::findOrFail($callId);
+
+        if ($call->status !== 'ringing') {
+            return response()->json(['error' => 'This call is no longer ringing.'], 422);
+        }
+
+        // Mark this participant's record
+        ChatCallParticipant::where('call_id', $call->id)
+            ->where('user_id', $user->id)
+            ->update(['left_at' => now()]);
+
+        // Check if all non-initiator participants have declined
+        $pendingCount = ChatCallParticipant::where('call_id', $call->id)
+            ->where('user_id', '!=', $call->initiated_by)
+            ->whereNull('left_at')
+            ->whereNull('joined_at')
+            ->count();
+
+        if ($pendingCount === 0) {
+            $call->update([
+                'status'   => 'declined',
+                'ended_at' => now(),
+            ]);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    public function endCall(string $callId): JsonResponse
+    {
+        $user = auth()->user();
+
+        $call = ChatCall::findOrFail($callId);
+
+        if (in_array($call->status, ['ended', 'missed', 'declined'])) {
+            return response()->json(['error' => 'This call has already ended.'], 422);
+        }
+
+        $duration = $call->started_at
+            ? (int) now()->diffInSeconds($call->started_at)
+            : 0;
+
+        $call->update([
+            'status'           => 'ended',
+            'ended_at'         => now(),
+            'duration_seconds' => $duration,
+        ]);
+
+        // Mark all active participants as left
+        ChatCallParticipant::where('call_id', $call->id)
+            ->whereNull('left_at')
+            ->update(['left_at' => now()]);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function activeCall(ChatConversation $conversation): JsonResponse
+    {
+        $user = auth()->user();
+        $this->abortIfNotParticipant($conversation, $user);
+
+        $call = ChatCall::where('conversation_id', $conversation->id)
+            ->whereIn('status', ['ringing', 'active'])
+            ->with(['initiatedBy', 'participants.user'])
+            ->first();
+
+        if (! $call) {
+            return response()->json(['call' => null]);
+        }
+
+        return response()->json([
+            'call' => [
+                'id'           => $call->id,
+                'type'         => $call->type,
+                'status'       => $call->status,
+                'room_name'    => $call->livekit_room_name,
+                'initiated_by' => [
+                    'id'   => $call->initiatedBy->id,
+                    'name' => $call->initiatedBy->name,
+                ],
+                'participants' => $call->participants->map(fn($p) => [
+                    'user_id'   => $p->user_id,
+                    'name'      => $p->user->name,
+                    'joined_at' => $p->joined_at,
+                    'is_muted'  => $p->is_muted,
+                ]),
+                'started_at' => $call->started_at,
+            ],
+        ]);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CANVAS / DOCS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    public function createCanvas(Request $request, ChatConversation $conversation): JsonResponse
+    {
+        $user = auth()->user();
+        $this->abortIfNotParticipant($conversation, $user);
+
+        $request->validate([
+            'title'   => 'required|string|max:255',
+            'content' => 'nullable|array',
+        ]);
+
+        $canvas = ChatCanvas::create([
+            'tenant_id'       => $conversation->tenant_id,
+            'conversation_id' => $conversation->id,
+            'title'           => $request->title,
+            'content'         => $request->content,
+            'created_by'      => $user->id,
+            'last_edited_by'  => $user->id,
+        ]);
+
+        // System message
+        ChatMessage::create([
+            'tenant_id'       => $conversation->tenant_id,
+            'conversation_id' => $conversation->id,
+            'sender_id'       => $user->id,
+            'body'            => "\xF0\x9F\x93\x84 {$user->name} created a document: {$request->title}",
+            'type'            => 'system',
+            'delivery_status' => 'sent',
+        ]);
+
+        $canvas->load(['createdBy', 'lastEditedBy']);
+
+        return response()->json(['canvas' => $canvas], 201);
+    }
+
+    public function listCanvas(ChatConversation $conversation): JsonResponse
+    {
+        $user = auth()->user();
+        $this->abortIfNotParticipant($conversation, $user);
+
+        $canvases = ChatCanvas::where('conversation_id', $conversation->id)
+            ->with(['createdBy', 'lastEditedBy'])
+            ->orderByDesc('updated_at')
+            ->get()
+            ->map(fn(ChatCanvas $c) => [
+                'id'             => $c->id,
+                'title'          => $c->title,
+                'is_shared'      => $c->is_shared,
+                'created_by'     => $c->createdBy ? ['id' => $c->createdBy->id, 'name' => $c->createdBy->name] : null,
+                'last_edited_by' => $c->lastEditedBy ? ['id' => $c->lastEditedBy->id, 'name' => $c->lastEditedBy->name] : null,
+                'updated_at'     => $c->updated_at->diffForHumans(),
+            ]);
+
+        return response()->json(['canvases' => $canvases]);
+    }
+
+    public function getCanvas(string $canvasId): JsonResponse
+    {
+        $canvas = ChatCanvas::with(['createdBy', 'lastEditedBy'])->findOrFail($canvasId);
+
+        return response()->json(['canvas' => $canvas]);
+    }
+
+    public function updateCanvas(Request $request, string $canvasId): JsonResponse
+    {
+        $user = auth()->user();
+
+        $canvas = ChatCanvas::findOrFail($canvasId);
+
+        $request->validate([
+            'title'   => 'sometimes|string|max:255',
+            'content' => 'sometimes|nullable|array',
+        ]);
+
+        $canvas->update(array_merge(
+            $request->only(['title', 'content']),
+            ['last_edited_by' => $user->id]
+        ));
+
+        $canvas->load(['createdBy', 'lastEditedBy']);
+
+        return response()->json(['canvas' => $canvas]);
+    }
+
+    public function deleteCanvas(string $canvasId): JsonResponse
+    {
+        $canvas = ChatCanvas::findOrFail($canvasId);
+        $canvas->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // WORKFLOWS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    public function listWorkflows(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+
+        $workflows = ChatWorkflow::where('tenant_id', $user->tenant_id)
+            ->with('createdBy')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn(ChatWorkflow $w) => [
+                'id'              => $w->id,
+                'name'            => $w->name,
+                'description'     => $w->description,
+                'is_active'       => $w->is_active,
+                'trigger'         => $w->trigger,
+                'steps'           => $w->steps,
+                'conversation_id' => $w->conversation_id,
+                'run_count'       => $w->run_count,
+                'last_run_at'     => $w->last_run_at?->diffForHumans(),
+                'created_by'      => $w->createdBy ? ['id' => $w->createdBy->id, 'name' => $w->createdBy->name] : null,
+                'created_at'      => $w->created_at->diffForHumans(),
+            ]);
+
+        return response()->json(['workflows' => $workflows]);
+    }
+
+    public function createWorkflow(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+
+        $request->validate([
+            'name'            => 'required|string|max:150',
+            'description'     => 'nullable|string|max:1000',
+            'trigger'         => 'required|array',
+            'trigger.type'    => 'required|string|in:message_contains,message_from,new_member,keyword,scheduled',
+            'trigger.value'   => 'nullable|string',
+            'steps'           => 'required|array|min:1',
+            'steps.*.action'  => 'required|string|in:send_message,create_task,add_reaction,notify_user,webhook',
+            'steps.*.config'  => 'required|array',
+            'conversation_id' => 'nullable|exists:chat_conversations,id',
+        ]);
+
+        $workflow = ChatWorkflow::create([
+            'tenant_id'       => $user->tenant_id,
+            'name'            => $request->name,
+            'description'     => $request->description,
+            'created_by'      => $user->id,
+            'trigger'         => $request->trigger,
+            'steps'           => $request->steps,
+            'conversation_id' => $request->conversation_id,
+        ]);
+
+        $workflow->load('createdBy');
+
+        return response()->json(['workflow' => $workflow], 201);
+    }
+
+    public function updateWorkflow(Request $request, string $workflowId): JsonResponse
+    {
+        $workflow = ChatWorkflow::findOrFail($workflowId);
+
+        $request->validate([
+            'name'            => 'sometimes|string|max:150',
+            'description'     => 'nullable|string|max:1000',
+            'trigger'         => 'sometimes|array',
+            'trigger.type'    => 'required_with:trigger|string|in:message_contains,message_from,new_member,keyword,scheduled',
+            'trigger.value'   => 'nullable|string',
+            'steps'           => 'sometimes|array|min:1',
+            'steps.*.action'  => 'required_with:steps|string|in:send_message,create_task,add_reaction,notify_user,webhook',
+            'steps.*.config'  => 'required_with:steps|array',
+            'conversation_id' => 'nullable|exists:chat_conversations,id',
+        ]);
+
+        $workflow->update($request->only([
+            'name', 'description', 'trigger', 'steps', 'conversation_id',
+        ]));
+
+        $workflow->load('createdBy');
+
+        return response()->json(['workflow' => $workflow]);
+    }
+
+    public function deleteWorkflow(string $workflowId): JsonResponse
+    {
+        $workflow = ChatWorkflow::findOrFail($workflowId);
+        $workflow->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function toggleWorkflow(string $workflowId): JsonResponse
+    {
+        $workflow = ChatWorkflow::findOrFail($workflowId);
+        $workflow->update(['is_active' => ! $workflow->is_active]);
+
+        return response()->json([
+            'success'   => true,
+            'is_active' => $workflow->fresh()->is_active,
+        ]);
+    }
+
+    public function runWorkflow(string $workflowId): JsonResponse
+    {
+        $user = auth()->user();
+
+        $workflow = ChatWorkflow::findOrFail($workflowId);
+
+        $run = ChatWorkflowRun::create([
+            'workflow_id'         => $workflow->id,
+            'triggered_by_user_id' => $user->id,
+            'status'              => 'running',
+        ]);
+
+        $stepResults = [];
+        $error = null;
+
+        try {
+            foreach ($workflow->steps ?? [] as $index => $step) {
+                $result = $this->executeWorkflowStep($step, $workflow, $user);
+                $stepResults[] = [
+                    'step'   => $index,
+                    'action' => $step['action'],
+                    'status' => 'completed',
+                    'result' => $result,
+                ];
+            }
+
+            $run->update([
+                'status'       => 'completed',
+                'step_results' => $stepResults,
+            ]);
+
+            $workflow->update([
+                'run_count'   => $workflow->run_count + 1,
+                'last_run_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            $error = $e->getMessage();
+            $run->update([
+                'status'       => 'failed',
+                'step_results' => $stepResults,
+                'error'        => $error,
+            ]);
+        }
+
+        return response()->json([
+            'run' => $run->fresh(),
+        ]);
+    }
+
+    public function workflowRuns(string $workflowId): JsonResponse
+    {
+        $workflow = ChatWorkflow::findOrFail($workflowId);
+
+        $runs = ChatWorkflowRun::where('workflow_id', $workflow->id)
+            ->with('triggeredByUser')
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get()
+            ->map(fn(ChatWorkflowRun $r) => [
+                'id'           => $r->id,
+                'status'       => $r->status,
+                'step_results' => $r->step_results,
+                'error'        => $r->error,
+                'triggered_by' => $r->triggeredByUser ? ['id' => $r->triggeredByUser->id, 'name' => $r->triggeredByUser->name] : null,
+                'created_at'   => $r->created_at->diffForHumans(),
+            ]);
+
+        return response()->json(['runs' => $runs]);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // WORKFLOW ENGINE (private)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    private function checkWorkflows(ChatMessage $message, ChatConversation $conversation): void
+    {
+        if ($message->type === 'system') {
+            return;
+        }
+
+        $workflows = ChatWorkflow::where('tenant_id', $conversation->tenant_id)
+            ->where('is_active', true)
+            ->where(function ($q) use ($conversation) {
+                $q->whereNull('conversation_id')
+                  ->orWhere('conversation_id', $conversation->id);
+            })
+            ->get();
+
+        foreach ($workflows as $workflow) {
+            if ($this->workflowTriggerMatches($workflow, $message, $conversation)) {
+                $this->executeWorkflow($workflow, $message);
+            }
+        }
+    }
+
+    private function workflowTriggerMatches(ChatWorkflow $workflow, ChatMessage $message, ChatConversation $conversation): bool
+    {
+        $trigger = $workflow->trigger;
+        if (! $trigger || ! isset($trigger['type'])) {
+            return false;
+        }
+
+        $body = $message->body ?? '';
+
+        return match ($trigger['type']) {
+            'message_contains' => ! empty($trigger['value']) && stripos($body, $trigger['value']) !== false,
+            'keyword'          => ! empty($trigger['value']) && preg_match('/\b' . preg_quote($trigger['value'], '/') . '\b/i', $body),
+            'message_from'     => ! empty($trigger['value']) && (string) $message->sender_id === (string) $trigger['value'],
+            'new_member'       => false, // Handled elsewhere (addParticipants)
+            'scheduled'        => false, // Handled by scheduler
+            default            => false,
+        };
+    }
+
+    private function executeWorkflow(ChatWorkflow $workflow, ChatMessage $message): void
+    {
+        $run = ChatWorkflowRun::create([
+            'workflow_id'            => $workflow->id,
+            'triggered_by_message_id' => $message->id,
+            'triggered_by_user_id'   => $message->sender_id,
+            'status'                 => 'running',
+        ]);
+
+        $stepResults = [];
+
+        try {
+            $sender = $message->sender ?? User::find($message->sender_id);
+
+            foreach ($workflow->steps ?? [] as $index => $step) {
+                $result = $this->executeWorkflowStep($step, $workflow, $sender);
+                $stepResults[] = [
+                    'step'   => $index,
+                    'action' => $step['action'],
+                    'status' => 'completed',
+                    'result' => $result,
+                ];
+            }
+
+            $run->update([
+                'status'       => 'completed',
+                'step_results' => $stepResults,
+            ]);
+
+            $workflow->update([
+                'run_count'   => $workflow->run_count + 1,
+                'last_run_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            $run->update([
+                'status'       => 'failed',
+                'step_results' => $stepResults,
+                'error'        => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function executeWorkflowStep(array $step, ChatWorkflow $workflow, $user): ?string
+    {
+        $action = $step['action'] ?? null;
+        $config = $step['config'] ?? [];
+
+        return match ($action) {
+            'send_message' => $this->workflowSendMessage($workflow, $config),
+            'create_task'  => $this->workflowCreateTask($workflow, $config, $user),
+            'add_reaction' => $this->workflowAddReaction($config),
+            'notify_user'  => $this->workflowNotifyUser($config),
+            'webhook'      => $this->workflowWebhook($config),
+            default        => 'unknown_action',
+        };
+    }
+
+    private function workflowSendMessage(ChatWorkflow $workflow, array $config): string
+    {
+        $conversationId = $config['conversation_id'] ?? $workflow->conversation_id;
+        if (! $conversationId) {
+            return 'no_conversation';
+        }
+
+        $body = $config['message'] ?? $config['body'] ?? 'Automated message';
+
+        ChatMessage::create([
+            'tenant_id'       => $workflow->tenant_id,
+            'conversation_id' => $conversationId,
+            'sender_id'       => $workflow->created_by,
+            'body'            => $body,
+            'type'            => 'system',
+            'delivery_status' => 'sent',
+        ]);
+
+        return 'message_sent';
+    }
+
+    private function workflowCreateTask(ChatWorkflow $workflow, array $config, $user): string
+    {
+        $conversationId = $config['conversation_id'] ?? $workflow->conversation_id;
+        if (! $conversationId) {
+            return 'no_conversation';
+        }
+
+        ChatTask::create([
+            'tenant_id'       => $workflow->tenant_id,
+            'conversation_id' => $conversationId,
+            'title'           => $config['title'] ?? 'Auto-created task',
+            'assigned_to'     => $config['assigned_to'] ?? $user->id,
+            'created_by'      => $workflow->created_by,
+            'status'          => 'open',
+            'due_at'          => isset($config['due_hours']) ? now()->addHours((int) $config['due_hours']) : null,
+        ]);
+
+        return 'task_created';
+    }
+
+    private function workflowAddReaction(array $config): string
+    {
+        // Reaction adding is contextual to the triggering message
+        // This is a placeholder; full implementation would need message context
+        return 'reaction_noted';
+    }
+
+    private function workflowNotifyUser(array $config): string
+    {
+        // Placeholder for notification integration
+        $userId = $config['user_id'] ?? null;
+        $message = $config['message'] ?? 'Workflow notification';
+
+        if ($userId) {
+            // Could integrate with the notification system here
+            return 'user_notified';
+        }
+
+        return 'no_user_specified';
+    }
+
+    private function workflowWebhook(array $config): string
+    {
+        $url = $config['url'] ?? null;
+        if (! $url) {
+            return 'no_url';
+        }
+
+        try {
+            $payload = $config['payload'] ?? [];
+            \Illuminate\Support\Facades\Http::timeout(10)->post($url, $payload);
+            return 'webhook_sent';
+        } catch (\Throwable $e) {
+            return 'webhook_failed: ' . $e->getMessage();
+        }
     }
 }

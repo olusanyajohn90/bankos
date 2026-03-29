@@ -916,6 +916,30 @@ Route::middleware(['auth', 'tenant'])->group(function () {
 
         // Link unfurling
         Route::post('/unfurl', [ChatController::class, 'unfurlLink'])->name('unfurl');
+
+        // Calls
+        Route::post('/conversations/{conversation}/call', [ChatController::class, 'initiateCall'])->name('call.initiate');
+        Route::post('/calls/{call}/join', [ChatController::class, 'joinCall'])->name('call.join');
+        Route::post('/calls/{call}/leave', [ChatController::class, 'leaveCall'])->name('call.leave');
+        Route::post('/calls/{call}/decline', [ChatController::class, 'declineCall'])->name('call.decline');
+        Route::post('/calls/{call}/end', [ChatController::class, 'endCall'])->name('call.end');
+        Route::get('/conversations/{conversation}/active-call', [ChatController::class, 'activeCall'])->name('call.active');
+
+        // Canvas
+        Route::post('/conversations/{conversation}/canvas', [ChatController::class, 'createCanvas'])->name('canvas.create');
+        Route::get('/conversations/{conversation}/canvas', [ChatController::class, 'listCanvas'])->name('canvas.list');
+        Route::get('/canvas/{canvas}', [ChatController::class, 'getCanvas'])->name('canvas.show');
+        Route::patch('/canvas/{canvas}', [ChatController::class, 'updateCanvas'])->name('canvas.update');
+        Route::delete('/canvas/{canvas}', [ChatController::class, 'deleteCanvas'])->name('canvas.delete');
+
+        // Workflows
+        Route::get('/workflows', [ChatController::class, 'listWorkflows'])->name('workflows.list');
+        Route::post('/workflows', [ChatController::class, 'createWorkflow'])->name('workflows.create');
+        Route::patch('/workflows/{workflow}', [ChatController::class, 'updateWorkflow'])->name('workflows.update');
+        Route::delete('/workflows/{workflow}', [ChatController::class, 'deleteWorkflow'])->name('workflows.delete');
+        Route::patch('/workflows/{workflow}/toggle', [ChatController::class, 'toggleWorkflow'])->name('workflows.toggle');
+        Route::post('/workflows/{workflow}/run', [ChatController::class, 'runWorkflow'])->name('workflows.run');
+        Route::get('/workflows/{workflow}/runs', [ChatController::class, 'workflowRuns'])->name('workflows.runs');
     });
 
     // ── PORTAL LOAN APPLICATIONS REVIEW ───────────────────────────────────────
