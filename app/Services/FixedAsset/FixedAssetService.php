@@ -3,6 +3,7 @@
 namespace App\Services\FixedAsset;
 
 use App\Models\FixedAsset;
+use App\Models\FixedAssetRevaluation;
 use App\Models\Tenant;
 use Carbon\Carbon;
 
@@ -114,6 +115,30 @@ class FixedAssetService
             'processed'         => $count,
             'total_depreciation' => round($totalDepreciation, 2),
         ];
+    }
+
+    /**
+     * Revalue an asset (upward revaluation or impairment).
+     */
+    public function revalue(FixedAsset $asset, float $newBookValue, ?string $reason, int $userId): FixedAssetRevaluation
+    {
+        $previousValue = (float) $asset->current_book_value;
+        $revaluationAmount = $newBookValue - $previousValue;
+
+        $revaluation = FixedAssetRevaluation::create([
+            'tenant_id'            => $asset->tenant_id,
+            'fixed_asset_id'       => $asset->id,
+            'previous_book_value'  => $previousValue,
+            'new_book_value'       => $newBookValue,
+            'revaluation_amount'   => $revaluationAmount,
+            'reason'               => $reason,
+            'revalued_by'          => $userId,
+            'revalued_at'          => now(),
+        ]);
+
+        $asset->update(['current_book_value' => $newBookValue]);
+
+        return $revaluation;
     }
 
     /**

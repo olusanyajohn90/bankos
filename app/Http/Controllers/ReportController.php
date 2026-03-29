@@ -964,4 +964,147 @@ class ReportController extends Controller
             'totalCost', 'totalDepreciation', 'totalBookValue', 'totalAssets', 'categories'
         ));
     }
+
+    public function loanAnalyticsDemographics(Request $request)
+    {
+        $tenantId = auth()->user()->tenant_id;
+
+        $loans = \App\Models\Loan::where('loans.tenant_id', $tenantId)
+            ->whereIn('status', ['active', 'overdue', 'closed', 'written_off'])
+            ->join('customers', 'loans.customer_id', '=', 'customers.id')
+            ->select('loans.*', 'customers.date_of_birth', 'customers.gender')
+            ->get();
+
+        // Age groups
+        $ageGroups = ['18-25', '26-35', '36-45', '46-55', '56-65', '65+', 'Unknown'];
+
+        $getAgeGroup = function($dob) {
+            if (!$dob) return 'Unknown';
+            $age = \Carbon\Carbon::parse($dob)->age;
+            if ($age < 18) return '18-25';
+            if ($age <= 25) return '18-25';
+            if ($age <= 35) return '26-35';
+            if ($age <= 45) return '36-45';
+            if ($age <= 55) return '46-55';
+            if ($age <= 65) return '56-65';
+            return '65+';
+        };
+
+        // By Age Group
+        $byAge = collect($ageGroups)->mapWithKeys(function ($group) {
+            return [$group => ['count' => 0, 'disbursed' => 0, 'outstanding' => 0, 'overdue_count' => 0, 'written_off' => 0]];
+        });
+
+        // By Gender
+        $byGender = collect(['male', 'female', 'Unknown'])->mapWithKeys(function ($g) {
+            return [$g => ['count' => 0, 'disbursed' => 0, 'outstanding' => 0, 'overdue_count' => 0, 'written_off' => 0]];
+        });
+
+        // Cross-tab: Age x Gender
+        $crossTab = [];
+        foreach ($ageGroups as $ag) {
+            foreach (['male', 'female', 'Unknown'] as $g) {
+                $crossTab[$ag][$g] = ['count' => 0, 'disbursed' => 0, 'outstanding' => 0];
+            }
+        }
+
+        foreach ($loans as $loan) {
+            $ag = $getAgeGroup($loan->date_of_birth);
+            $g = $loan->gender ?? 'Unknown';
+
+            $byAge[$ag]['count']++;
+            $byAge[$ag]['disbursed'] += $loan->principal_amount;
+            $byAge[$ag]['outstanding'] += $loan->outstanding_balance;
+            if ($loan->status === 'overdue') $byAge[$ag]['overdue_count']++;
+            if ($loan->status === 'written_off') $byAge[$ag]['written_off']++;
+
+            $byGender[$g]['count']++;
+            $byGender[$g]['disbursed'] += $loan->principal_amount;
+            $byGender[$g]['outstanding'] += $loan->outstanding_balance;
+            if ($loan->status === 'overdue') $byGender[$g]['overdue_count']++;
+            if ($loan->status === 'written_off') $byGender[$g]['written_off']++;
+
+            $crossTab[$ag][$g]['count']++;
+            $crossTab[$ag][$g]['disbursed'] += $loan->principal_amount;
+            $crossTab[$ag][$g]['outstanding'] += $loan->outstanding_balance;
+        }
+
+        $totalLoans = $loans->count();
+        $totalDisbursed = $loans->sum('principal_amount');
+        $totalOutstanding = $loans->sum('outstanding_balance');
+        $totalOverdue = $loans->where('status', 'overdue')->count();
+
+        return view('reports.loan_analytics_demographics', compact(
+            'byAge', 'byGender', 'crossTab', 'ageGroups',
+            'totalLoans', 'totalDisbursed', 'totalOutstanding', 'totalOverdue'
+        ));
+    }
+
+    public function callOver(Request $request)
+    {
+        $tenantId = auth()->user()->tenant_id;
+        $date = $request->input('date', now()->format('Y-m-d'));
+
+        $transactions = \App\Models\Transaction::where('tenant_id', $tenantId)
+            ->whereDate('created_at', $date)
+            ->where('status', 'success')
+            ->with(['account.customer'])
+            ->orderBy('created_at')
+            ->get();
+
+        // Group by the user who processed (use created_by or channel)
+        $byChannel = $transactions->groupBy('channel');
+
+        $totalDebits = $transactions->where('amount', '<', 0)->sum('amount');
+        $totalCredits = $transactions->where('amount', '>', 0)->sum('amount');
+        $totalCount = $transactions->count();
+        $netMovement = $totalCredits + $totalDebits;
+
+        return view('reports.call_over', compact(
+            'transactions', 'byChannel', 'date',
+            'totalDebits', 'totalCredits', 'totalCount', 'netMovement'
+        ));
+    }
+
+    public function icardReport(Request $request)
+    {
+        $tenantId = auth()->user()->tenant_id;
+        $date = $request->input('date', now()->format('Y-m-d'));
+        $accountType = $request->input('account_type');
+
+        $query = \App\Models\Account::where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->with('customer');
+
+        if ($accountType) {
+            $query->where('account_type', $accountType);
+        }
+
+        $accounts = $query->orderBy('account_number')->get();
+
+        // Group by account type
+        $byType = $accounts->groupBy('account_type');
+
+        $typeSummary = $byType->map(function ($accs, $type) {
+            return [
+                'type' => $type,
+                'count' => $accs->count(),
+                'total_ledger' => $accs->sum('ledger_balance'),
+                'total_available' => $accs->sum('available_balance'),
+            ];
+        });
+
+        $totalLedger = $accounts->sum('ledger_balance');
+        $totalAvailable = $accounts->sum('available_balance');
+        $totalAccounts = $accounts->count();
+
+        // Get distinct account types for filter
+        $accountTypes = \App\Models\Account::where('tenant_id', $tenantId)
+            ->select('account_type')->distinct()->pluck('account_type');
+
+        return view('reports.icard', compact(
+            'accounts', 'byType', 'typeSummary', 'date', 'accountType',
+            'totalLedger', 'totalAvailable', 'totalAccounts', 'accountTypes'
+        ));
+    }
 }

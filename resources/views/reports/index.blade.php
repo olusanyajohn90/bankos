@@ -173,6 +173,40 @@
                 </div>
             </a>
 
+            <!-- Call-Over Report -->
+            <a href="{{ route('reports.call-over') }}" class="card hover:border-cyan-500/50 transition-all hover:shadow-md group block h-full">
+                <div class="flex items-start gap-4">
+                    <div class="p-3 rounded-lg bg-cyan-50 text-cyan-600 group-hover:bg-cyan-600 group-hover:text-white transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-bankos-text group-hover:text-cyan-600 transition-colors">Call-Over Report</h4>
+                        <p class="text-sm text-bankos-text-sec mt-1 line-clamp-2">End-of-day reconciliation of all transactions grouped by channel, with debit/credit totals and net movement.</p>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 text-xs font-semibold text-cyan-600 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span>Generate Report</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </div>
+            </a>
+
+            <!-- ICard Report -->
+            <a href="{{ route('reports.icard') }}" class="card hover:border-slate-500/50 transition-all hover:shadow-md group block h-full">
+                <div class="flex items-start gap-4">
+                    <div class="p-3 rounded-lg bg-slate-100 text-slate-600 group-hover:bg-slate-600 group-hover:text-white transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-bankos-text group-hover:text-slate-600 transition-colors">ICard Report</h4>
+                        <p class="text-sm text-bankos-text-sec mt-1 line-clamp-2">Internal position report showing every account's ledger and available balance, grouped by account type.</p>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 text-xs font-semibold text-slate-600 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span>Generate Report</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </div>
+            </a>
+
         </div>
     </div>
 
@@ -430,6 +464,23 @@
                     </div>
                 </div>
                 <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 text-xs font-semibold text-indigo-600 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span>Generate Report</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </div>
+            </a>
+
+            {{-- Loan Performance by Demographics --}}
+            <a href="{{ route('reports.loan-analytics-demographics') }}" class="card hover:border-purple-500/50 transition-all hover:shadow-md group block h-full">
+                <div class="flex items-start gap-4">
+                    <div class="p-3 rounded-lg bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-bankos-text group-hover:text-purple-600 transition-colors">Loan Performance by Demographics</h4>
+                        <p class="text-sm text-bankos-text-sec mt-1 line-clamp-2">Loan analytics broken down by age group and gender — disbursements, outstanding balances, overdue, and write-offs.</p>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 text-xs font-semibold text-purple-600 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
                     <span>Generate Report</span>
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </div>

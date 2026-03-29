@@ -11,6 +11,9 @@
             </div>
             <div class="flex items-center gap-3">
                 @if ($fixedAsset->status === 'active')
+                    <button @click="$dispatch('open-modal', 'revalue-asset')" class="btn btn-primary">
+                        Revalue Asset
+                    </button>
                     <button @click="$dispatch('open-modal', 'dispose-asset')" class="btn btn-secondary">
                         Dispose Asset
                     </button>
@@ -180,6 +183,83 @@
             </div>
         </div>
     </div>
+
+    {{-- ─── Revaluation History ─────────────────────────────────────── --}}
+    @if ($revaluations->count())
+    <div class="card p-0 overflow-hidden mt-6">
+        <div class="p-5 border-b border-bankos-border dark:border-bankos-dark-border">
+            <h3 class="font-bold text-base">Revaluation History</h3>
+            <p class="text-xs text-bankos-muted mt-0.5">Past asset revaluations and impairments</p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead>
+                    <tr class="bg-gray-50 dark:bg-bankos-dark-bg/50 border-b border-bankos-border dark:border-bankos-dark-border text-xs uppercase tracking-wider text-bankos-text-sec">
+                        <th class="px-5 py-3 font-semibold">Date</th>
+                        <th class="px-5 py-3 font-semibold text-right">Previous Value</th>
+                        <th class="px-5 py-3 font-semibold text-right">New Value</th>
+                        <th class="px-5 py-3 font-semibold text-right">Change</th>
+                        <th class="px-5 py-3 font-semibold">Reason</th>
+                        <th class="px-5 py-3 font-semibold">By</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-bankos-border dark:divide-bankos-dark-border">
+                    @foreach ($revaluations as $reval)
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                        <td class="px-5 py-3 font-medium">{{ $reval->revalued_at->format('d M Y, H:i') }}</td>
+                        <td class="px-5 py-3 text-right font-mono">₦{{ number_format($reval->previous_book_value, 2) }}</td>
+                        <td class="px-5 py-3 text-right font-mono font-bold">₦{{ number_format($reval->new_book_value, 2) }}</td>
+                        <td class="px-5 py-3 text-right font-mono font-bold {{ (float) $reval->revaluation_amount >= 0 ? 'text-bankos-success' : 'text-accent-crimson' }}">
+                            {{ (float) $reval->revaluation_amount >= 0 ? '+' : '' }}₦{{ number_format($reval->revaluation_amount, 2) }}
+                        </td>
+                        <td class="px-5 py-3 text-bankos-muted max-w-xs truncate">{{ $reval->reason ?? '—' }}</td>
+                        <td class="px-5 py-3">{{ $reval->revaluedBy->name ?? '—' }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+
+    {{-- ─── Revalue Asset Modal ──────────────────────────────────────── --}}
+    @if ($fixedAsset->status === 'active')
+    <div
+        x-data="{ show: false }"
+        @open-modal.window="if ($event.detail === 'revalue-asset') show = true"
+        @keydown.escape.window="show = false"
+        x-show="show"
+        x-cloak
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+    >
+        <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="show = false"></div>
+        <div class="relative bg-white dark:bg-bankos-dark-surface rounded-xl shadow-2xl w-full max-w-md p-6">
+            <div class="flex justify-between items-center mb-5">
+                <h3 class="font-bold text-lg">Revalue Asset</h3>
+                <button @click="show = false" class="text-bankos-muted hover:text-bankos-text">
+                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <form action="{{ route('fixed-assets.revalue', $fixedAsset) }}" method="POST" class="space-y-4">
+                @csrf
+                @method('PATCH')
+                <div class="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 text-sm text-blue-800 dark:text-blue-300">
+                    Current Book Value: <strong>₦{{ number_format($fixedAsset->current_book_value, 2) }}</strong>
+                </div>
+                <div>
+                    <label class="form-label">New Book Value (₦) <span class="text-red-500">*</span></label>
+                    <input type="number" name="new_book_value" class="form-input" step="0.01" min="0" required>
+                    <span class="form-hint">Enter the new fair market value of the asset</span>
+                </div>
+                <div>
+                    <label class="form-label">Reason</label>
+                    <textarea name="reason" class="form-input" rows="2" maxlength="500" placeholder="Reason for revaluation, e.g. market appraisal, impairment..."></textarea>
+                </div>
+                <button type="submit" class="btn w-full btn-primary">Confirm Revaluation</button>
+            </form>
+        </div>
+    </div>
+    @endif
 
     {{-- ─── Dispose Asset Modal ──────────────────────────────────────── --}}
     @if ($fixedAsset->status === 'active')

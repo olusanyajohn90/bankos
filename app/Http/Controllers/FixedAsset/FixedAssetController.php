@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\FixedAsset;
 use App\Models\FixedAssetCategory;
+use App\Models\FixedAssetRevaluation;
 use App\Services\FixedAsset\FixedAssetService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -92,7 +93,12 @@ class FixedAssetController extends Controller
         $fixedAsset->load('category', 'branch', 'purchasedBy');
         $schedule = $fixedAsset->depreciation_schedule;
 
-        return view('fixed-assets.show', compact('fixedAsset', 'schedule'));
+        $revaluations = FixedAssetRevaluation::where('fixed_asset_id', $fixedAsset->id)
+            ->with('revaluedBy')
+            ->orderByDesc('revalued_at')
+            ->get();
+
+        return view('fixed-assets.show', compact('fixedAsset', 'schedule', 'revaluations'));
     }
 
     public function update(Request $request, FixedAsset $fixedAsset)
@@ -125,5 +131,22 @@ class FixedAssetController extends Controller
         );
 
         return back()->with('success', 'Asset disposed successfully.');
+    }
+
+    public function revalue(Request $request, FixedAsset $fixedAsset, FixedAssetService $service)
+    {
+        $data = $request->validate([
+            'new_book_value' => 'required|numeric|min:0',
+            'reason'         => 'nullable|string|max:500',
+        ]);
+
+        $service->revalue(
+            $fixedAsset,
+            (float) $data['new_book_value'],
+            $data['reason'] ?? null,
+            auth()->id()
+        );
+
+        return back()->with('success', 'Asset revalued successfully.');
     }
 }

@@ -162,6 +162,9 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/reports/single-obligor-limit', [\App\Http\Controllers\ReportController::class, 'singleObligorLimit'])->name('reports.single-obligor-limit');
     Route::get('/reports/loan-due-today', [\App\Http\Controllers\ReportController::class, 'loanDueToday'])->name('reports.loan-due-today');
     Route::get('/reports/fixed-assets', [\App\Http\Controllers\ReportController::class, 'fixedAssets'])->name('reports.fixed-assets');
+    Route::get('/reports/loan-analytics-demographics', [\App\Http\Controllers\ReportController::class, 'loanAnalyticsDemographics'])->name('reports.loan-analytics-demographics');
+    Route::get('/reports/call-over', [\App\Http\Controllers\ReportController::class, 'callOver'])->name('reports.call-over');
+    Route::get('/reports/icard', [\App\Http\Controllers\ReportController::class, 'icardReport'])->name('reports.icard');
 
     // Custom Report Builder
     Route::prefix('custom-reports')->name('custom-reports.')->group(function () {
@@ -749,6 +752,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/', [FixedAssetController::class, 'store'])->name('store');
         Route::get('/{fixedAsset}', [FixedAssetController::class, 'show'])->name('show');
         Route::patch('/{fixedAsset}/dispose', [FixedAssetController::class, 'dispose'])->name('dispose');
+        Route::patch('/{fixedAsset}/revalue', [FixedAssetController::class, 'revalue'])->name('revalue');
         // Categories
         Route::post('/categories', [FixedAssetController::class, 'storeCategory'])->name('categories.store');
     });
@@ -772,6 +776,17 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/{creditPolicy}/rules', [CreditPolicyController::class, 'storeRule'])->name('rules.store');
         Route::delete('/rules/{rule}', [CreditPolicyController::class, 'destroyRule'])->name('rules.destroy');
         Route::post('/evaluate/{loan}', [CreditPolicyController::class, 'evaluate'])->name('evaluate');
+    });
+
+    // ── TRANSFER PROVIDERS ──────────────────────────────────────────────────
+    Route::prefix('transfer-providers')->name('transfer-providers.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\TransferProviderController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\TransferProviderController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\TransferProviderController::class, 'store'])->name('store');
+        Route::get('/{provider}/edit', [\App\Http\Controllers\TransferProviderController::class, 'edit'])->name('edit');
+        Route::patch('/{provider}', [\App\Http\Controllers\TransferProviderController::class, 'update'])->name('update');
+        Route::patch('/{provider}/toggle', [\App\Http\Controllers\TransferProviderController::class, 'toggleActive'])->name('toggle');
+        Route::patch('/{provider}/default', [\App\Http\Controllers\TransferProviderController::class, 'setDefault'])->name('default');
     });
 
     // ── NIP OUTWARD TRANSFERS ─────────────────────────────────────────────────
