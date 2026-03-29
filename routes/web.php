@@ -825,6 +825,49 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::delete('/conversations/{conversation}/participants/{user}', [ChatController::class, 'removeParticipant'])->name('participants.remove');
         Route::get('/attachments/{attachment}/download', [ChatController::class, 'downloadAttachment'])->name('attachment.download');
         Route::get('/unread-count', [ChatController::class, 'unreadCount'])->name('unread-count'); // JSON
+
+        // Reactions
+        Route::post('/messages/{message}/reactions', [ChatController::class, 'toggleReaction'])->name('messages.react');
+
+        // Pinned messages
+        Route::post('/messages/{message}/pin', [ChatController::class, 'pinMessage'])->name('messages.pin');
+        Route::delete('/messages/{message}/pin', [ChatController::class, 'unpinMessage'])->name('messages.unpin');
+        Route::get('/conversations/{conversation}/pinned', [ChatController::class, 'pinnedMessages'])->name('pinned');
+
+        // Starred messages
+        Route::post('/messages/{message}/star', [ChatController::class, 'starMessage'])->name('messages.star');
+        Route::get('/starred', [ChatController::class, 'starredMessages'])->name('starred');
+
+        // Mute
+        Route::post('/conversations/{conversation}/mute', [ChatController::class, 'muteConversation'])->name('mute');
+
+        // Search
+        Route::get('/search', [ChatController::class, 'searchMessages'])->name('search');
+
+        // Forward
+        Route::post('/messages/{message}/forward', [ChatController::class, 'forwardMessage'])->name('messages.forward');
+
+        // Polls
+        Route::post('/conversations/{conversation}/polls', [ChatController::class, 'createPoll'])->name('polls.create');
+        Route::post('/polls/{poll}/vote', [ChatController::class, 'votePoll'])->name('polls.vote');
+        Route::post('/polls/{poll}/close', [ChatController::class, 'closePoll'])->name('polls.close');
+
+        // Tasks
+        Route::post('/conversations/{conversation}/tasks', [ChatController::class, 'createTask'])->name('tasks.create');
+        Route::patch('/tasks/{task}/status', [ChatController::class, 'updateTaskStatus'])->name('tasks.update-status');
+        Route::get('/conversations/{conversation}/tasks', [ChatController::class, 'conversationTasks'])->name('tasks.list');
+
+        // Presence / Typing
+        Route::post('/heartbeat', [ChatController::class, 'heartbeat'])->name('heartbeat');
+        Route::get('/conversations/{conversation}/presence', [ChatController::class, 'presence'])->name('presence');
+
+        // Group enhancements
+        Route::patch('/conversations/{conversation}/group', [ChatController::class, 'updateGroup'])->name('group.update');
+        Route::post('/conversations/{conversation}/invite-link', [ChatController::class, 'generateInviteLink'])->name('invite-link');
+        Route::post('/join/{inviteCode}', [ChatController::class, 'joinViaInvite'])->name('join');
+
+        // Disappearing messages
+        Route::post('/conversations/{conversation}/disappearing', [ChatController::class, 'setDisappearing'])->name('disappearing');
     });
 
     // ── PORTAL LOAN APPLICATIONS REVIEW ───────────────────────────────────────

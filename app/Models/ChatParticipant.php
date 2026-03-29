@@ -16,12 +16,16 @@ class ChatParticipant extends Model
         'joined_at',
         'last_read_at',
         'left_at',
+        'is_muted',
+        'muted_until',
     ];
 
     protected $casts = [
         'joined_at'    => 'datetime',
         'last_read_at' => 'datetime',
         'left_at'      => 'datetime',
+        'is_muted'     => 'boolean',
+        'muted_until'  => 'datetime',
     ];
 
     public function conversation(): BelongsTo

@@ -120,9 +120,46 @@ class ChatService
 
     public function markRead(ChatConversation $conv, User $user): void
     {
+        $this->markMessagesRead($conv, $user);
+    }
+
+    public function markMessagesRead(ChatConversation $conv, User $user): void
+    {
         ChatParticipant::where('conversation_id', $conv->id)
             ->where('user_id', $user->id)
             ->update(['last_read_at' => now()]);
+
+        // Create read receipts for unread messages
+        $unreadMessages = ChatMessage::where('conversation_id', $conv->id)
+            ->where('sender_id', '!=', $user->id)
+            ->where('is_deleted', false)
+            ->whereDoesntHave('readReceipts', fn($q) => $q->where('user_id', $user->id))
+            ->pluck('id');
+
+        foreach ($unreadMessages as $msgId) {
+            \App\Models\ChatReadReceipt::firstOrCreate(
+                ['message_id' => $msgId, 'user_id' => $user->id],
+                ['read_at' => now()]
+            );
+        }
+
+        // Update delivery_status to 'read' for those messages
+        ChatMessage::where('conversation_id', $conv->id)
+            ->where('sender_id', '!=', $user->id)
+            ->where('delivery_status', '!=', 'read')
+            ->update(['delivery_status' => 'read']);
+    }
+
+    public function updatePresence(User $user, ?string $typingInConversationId = null): void
+    {
+        \App\Models\ChatPresence::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'last_seen_at' => now(),
+                'typing_in' => $typingInConversationId,
+                'typing_at' => $typingInConversationId ? now() : null,
+            ]
+        );
     }
 
     public function unreadCount(User $user, string $tenantId): int

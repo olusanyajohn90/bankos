@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Traits\BelongsToTenant;
 
 class ChatConversation extends Model
@@ -24,11 +25,14 @@ class ChatConversation extends Model
         'last_message_at',
         'last_message_preview',
         'is_archived',
+        'invite_code',
+        'disappear_minutes',
     ];
 
     protected $casts = [
-        'last_message_at' => 'datetime',
-        'is_archived'     => 'boolean',
+        'last_message_at'  => 'datetime',
+        'is_archived'      => 'boolean',
+        'disappear_minutes' => 'integer',
     ];
 
     public function createdBy(): BelongsTo
@@ -57,6 +61,21 @@ class ChatConversation extends Model
         if ($this->type === 'group') return $this->name ?? 'Group';
         $other = $this->users->firstWhere('id', '!=', $forUser->id);
         return $other?->name ?? 'Unknown';
+    }
+
+    public function pinnedMessages(): HasMany
+    {
+        return $this->hasMany(ChatPinnedMessage::class, 'conversation_id');
+    }
+
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(ChatTask::class, 'conversation_id');
+    }
+
+    public function polls(): HasMany
+    {
+        return $this->hasMany(ChatPoll::class, 'conversation_id');
     }
 
     public function unreadCountFor(User $user): int

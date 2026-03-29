@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ChatMessage extends Model
 {
@@ -24,13 +25,18 @@ class ChatMessage extends Model
         'edited_at',
         'is_deleted',
         'deleted_at',
+        'delivery_status',
+        'is_disappearing',
+        'disappear_at',
     ];
 
     protected $casts = [
-        'is_edited'  => 'boolean',
-        'edited_at'  => 'datetime',
-        'is_deleted' => 'boolean',
-        'deleted_at' => 'datetime',
+        'is_edited'       => 'boolean',
+        'edited_at'       => 'datetime',
+        'is_deleted'      => 'boolean',
+        'deleted_at'      => 'datetime',
+        'is_disappearing' => 'boolean',
+        'disappear_at'    => 'datetime',
     ];
 
     public function conversation(): BelongsTo
@@ -51,6 +57,36 @@ class ChatMessage extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(ChatAttachment::class, 'message_id');
+    }
+
+    public function reactions(): HasMany
+    {
+        return $this->hasMany(ChatReaction::class, 'message_id');
+    }
+
+    public function readReceipts(): HasMany
+    {
+        return $this->hasMany(ChatReadReceipt::class, 'message_id');
+    }
+
+    public function poll(): HasOne
+    {
+        return $this->hasOne(ChatPoll::class, 'message_id');
+    }
+
+    public function task(): HasOne
+    {
+        return $this->hasOne(ChatTask::class, 'message_id');
+    }
+
+    public function pinnedIn(): HasMany
+    {
+        return $this->hasMany(ChatPinnedMessage::class, 'message_id');
+    }
+
+    public function starredBy(): HasMany
+    {
+        return $this->hasMany(ChatStarredMessage::class, 'message_id');
     }
 
     public function getBodyAttribute($value): string
