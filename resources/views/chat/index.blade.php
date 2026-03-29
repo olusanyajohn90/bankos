@@ -2212,11 +2212,17 @@ function chatApp() {
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': this.csrfToken(),
+                        'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
                     },
                     body: JSON.stringify(payload),
                 });
-                if (!res.ok) throw new Error('Failed');
+                if (!res.ok) {
+                    const errText = await res.text();
+                    console.error('Task creation failed:', res.status, errText);
+                    alert('Task creation failed: ' + res.status + ' - ' + errText.substring(0, 200));
+                    return;
+                }
                 const data = await res.json();
                 if (data.message) this.messages.push(data.message);
                 this.showCreateTask = false;
