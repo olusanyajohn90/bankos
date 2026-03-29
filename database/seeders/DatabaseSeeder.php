@@ -125,5 +125,35 @@ class DatabaseSeeder extends Seeder
         $this->call(SystemDataSeeder::class);
         $this->call(NotificationTemplatesSeeder::class);
         $this->call(DefaultTransactionLimitsSeeder::class);
+
+        // 13. Assign loan officers to loans & accounts (must run after DemoData + Branch)
+        $this->call(LoanOfficerAttributionSeeder::class);
+
+        // 14. Fixed assets (categories + assets with depreciation)
+        $this->call(FixedAssetSeeder::class);
+
+        // 15. Transfer providers + bank list
+        $this->call(TransferProviderSeeder::class);
+
+        // 16. Group lending (centres, groups, members)
+        $this->call(GroupLendingSeeder::class);
+
+        // 17. HR module (org structure, leave types, staff profiles)
+        $this->call(HRSeeder::class);
+
+        // 18. Banking products (fixed deposits, standing orders, cheque books)
+        $this->call(BankingProductsSeeder::class);
+
+        // 19. Document management & communications
+        $this->call(DocumentsCommsSeeder::class);
+
+        // 20. AML sanctions list
+        $this->call(SanctionsListSeeder::class);
+
+        // 21. Workspace (chat, support tickets, CRM, visitors)
+        $this->call(WorkspaceSupportSeeder::class);
+
+        // 22. Cooperative module (dividends, contributions)
+        $this->call(CooperativeSeeder::class);
     }
 }
