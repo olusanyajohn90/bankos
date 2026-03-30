@@ -4195,7 +4195,7 @@ function chatApp() {
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrfToken(), 'Accept': 'application/json' },
                     body: JSON.stringify({ type }),
                 });
-                if (!res.ok) { alert('Failed to start call'); return; }
+                if (!res.ok) { const e = await res.text(); alert('Failed to start call: ' + e.substring(0, 200)); return; }
                 const data = await res.json();
                 await this.connectToLiveKit(data.token, data.ws_url, type);
                 this.callId = data.call_id;
@@ -4518,7 +4518,8 @@ function chatApp() {
                     this.showWorkflowEditor = false;
                     await this.loadWorkflows();
                 } else {
-                    alert('Failed to save workflow');
+                    const e = await res.text();
+                    alert('Failed to save workflow: ' + e.substring(0, 300));
                 }
             } catch (e) { console.error('saveWorkflow error', e); }
         },

@@ -2354,11 +2354,11 @@ class ChatController extends Controller
             'description'     => 'nullable|string|max:1000',
             'trigger'         => 'required|array',
             'trigger.type'    => 'required|string|in:message_contains,message_from,new_member,keyword,scheduled',
-            'trigger.value'   => 'nullable|string',
+            'trigger.config'  => 'nullable',
             'steps'           => 'required|array|min:1',
             'steps.*.action'  => 'required|string|in:send_message,create_task,add_reaction,notify_user,webhook',
-            'steps.*.config'  => 'required|array',
-            'conversation_id' => 'nullable|exists:chat_conversations,id',
+            'steps.*.config'  => 'nullable',
+            'conversation_id' => 'nullable',
         ]);
 
         $workflow = ChatWorkflow::create([
@@ -2385,11 +2385,11 @@ class ChatController extends Controller
             'description'     => 'nullable|string|max:1000',
             'trigger'         => 'sometimes|array',
             'trigger.type'    => 'required_with:trigger|string|in:message_contains,message_from,new_member,keyword,scheduled',
-            'trigger.value'   => 'nullable|string',
+            'trigger.config'  => 'nullable',
             'steps'           => 'sometimes|array|min:1',
             'steps.*.action'  => 'required_with:steps|string|in:send_message,create_task,add_reaction,notify_user,webhook',
-            'steps.*.config'  => 'required_with:steps|array',
-            'conversation_id' => 'nullable|exists:chat_conversations,id',
+            'steps.*.config'  => 'nullable',
+            'conversation_id' => 'nullable',
         ]);
 
         $workflow->update($request->only([
