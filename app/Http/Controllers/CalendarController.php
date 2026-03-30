@@ -38,13 +38,21 @@ class CalendarController extends Controller
         $start = $request->input('start');
         $end = $request->input('end');
 
+        if (!$start || !$end) {
+            return response()->json([]);
+        }
+
+        // Normalize dates
+        $startDate = \Carbon\Carbon::parse($start)->startOfDay()->toDateTimeString();
+        $endDate = \Carbon\Carbon::parse($end)->endOfDay()->toDateTimeString();
+
         $query = CalendarEvent::where('tenant_id', $tenantId)
-            ->where(function ($q) use ($start, $end) {
-                $q->whereBetween('start_at', [$start, $end])
-                  ->orWhereBetween('end_at', [$start, $end])
-                  ->orWhere(function ($q2) use ($start, $end) {
-                      $q2->where('start_at', '<=', $start)
-                          ->where('end_at', '>=', $end);
+            ->where(function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('start_at', [$startDate, $endDate])
+                  ->orWhereBetween('end_at', [$startDate, $endDate])
+                  ->orWhere(function ($q2) use ($startDate, $endDate) {
+                      $q2->where('start_at', '<=', $startDate)
+                          ->where('end_at', '>=', $endDate);
                   });
             })
             ->with(['attendees.user', 'createdBy', 'calendar'])
@@ -53,7 +61,7 @@ class CalendarController extends Controller
         // Also pull in chat tasks with due_date in range
         $tasks = \App\Models\ChatTask::where('tenant_id', $tenantId)
             ->whereNotNull('due_date')
-            ->whereBetween('due_date', [$start, $end])
+            ->whereBetween('due_date', [$startDate, $endDate])
             ->with('assignedTo')
             ->get();
 

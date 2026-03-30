@@ -798,16 +798,18 @@ class ChatController extends Controller
             ->orderByDesc('created_at')
             ->get()
             ->map(fn($t) => [
-                'id'           => $t->id,
-                'title'        => $t->title,
-                'description'  => $t->description,
-                'assigned_to'  => $t->assignedTo?->name ?? 'Unknown',
-                'created_by'   => $t->createdByUser?->name ?? 'Unknown',
-                'priority'     => $t->priority,
-                'status'       => $t->status,
-                'due_date'     => $t->due_date?->toDateString(),
-                'completed_at' => $t->completed_at?->toISOString(),
-                'created_at'   => $t->created_at?->toISOString(),
+                'id'              => $t->id,
+                'message_id'      => $t->message_id,
+                'conversation_id' => $t->conversation_id,
+                'title'           => $t->title,
+                'description'     => $t->description,
+                'assigned_to_name' => $t->assignedTo?->name ?? null,
+                'created_by'      => $t->createdByUser?->name ?? 'Unknown',
+                'priority'        => $t->priority,
+                'status'          => $t->status,
+                'due_date'        => $t->due_date?->toDateString(),
+                'completed_at'    => $t->completed_at?->toISOString(),
+                'created_at'      => $t->created_at?->toISOString(),
             ]);
 
         return response()->json(['tasks' => $tasks]);
@@ -1981,6 +1983,17 @@ class ChatController extends Controller
         $request->validate([
             'type' => 'required|in:audio,video',
         ]);
+
+        // Auto-end stale calls (ringing > 2 min or active > 2 hours)
+        ChatCall::where('conversation_id', $conversation->id)
+            ->where('status', 'ringing')
+            ->where('created_at', '<', now()->subMinutes(2))
+            ->update(['status' => 'ended', 'ended_at' => now()]);
+
+        ChatCall::where('conversation_id', $conversation->id)
+            ->where('status', 'active')
+            ->where('created_at', '<', now()->subHours(2))
+            ->update(['status' => 'ended', 'ended_at' => now()]);
 
         // Prevent duplicate active calls in the same conversation
         $existing = ChatCall::where('conversation_id', $conversation->id)

@@ -595,7 +595,7 @@
                         <template x-if="!loadingMessages">
                             <div>
                                 <template x-for="(msg, index) in messages" :key="msg.id">
-                                    <div>
+                                    <div :data-message-id="msg.id">
                                         {{-- Date separator --}}
                                         <template x-if="index === 0 || messages[index - 1].date_label !== msg.date_label">
                                             <div class="flex items-center gap-3 my-4">
@@ -1547,7 +1547,7 @@
                     <p class="text-sm text-bankos-muted text-center py-8">No tasks yet</p>
                 </template>
                 <template x-for="t in tasksList" :key="t.id">
-                    <div class="p-3 bg-bankos-bg rounded-lg border border-bankos-border">
+                    <div @click="jumpToTaskMessage(t)" class="p-3 bg-bankos-bg rounded-lg border border-bankos-border cursor-pointer hover:border-bankos-primary/50 hover:shadow-sm transition-all">
                         <div class="flex items-center gap-1.5 mb-1">
                             <span :class="{
                                 'bg-red-100 text-red-700': t.priority === 'high',
@@ -3521,6 +3521,27 @@ function chatApp() {
                     this.tasksList = data.tasks ?? [];
                 }
             } catch {}
+        },
+
+        async jumpToTaskMessage(task) {
+            if (!task.message_id) return;
+            // Close task panel
+            this.showTasksPanel = false;
+            // If task is in a different conversation, navigate to it
+            if (task.conversation_id && (!this.activeConversation || this.activeConversation.id !== task.conversation_id)) {
+                const conv = this.conversations.find(c => c.id === task.conversation_id);
+                if (conv) await this.openConversation(conv);
+            }
+            // Wait for messages to load, then scroll to the task message
+            await this.$nextTick();
+            setTimeout(() => {
+                const msgEl = document.querySelector(`[data-message-id="${task.message_id}"]`);
+                if (msgEl) {
+                    msgEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    msgEl.classList.add('ring-2', 'ring-bankos-primary', 'ring-offset-2');
+                    setTimeout(() => msgEl.classList.remove('ring-2', 'ring-bankos-primary', 'ring-offset-2'), 3000);
+                }
+            }, 500);
         },
 
         // ── Group Settings ───────────────────────────────────────────────────
