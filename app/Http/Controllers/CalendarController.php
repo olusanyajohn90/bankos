@@ -33,6 +33,7 @@ class CalendarController extends Controller
     // JSON: Get events for date range
     public function events(Request $request)
     {
+        try {
         $tenantId = auth()->user()->tenant_id;
         $start = $request->input('start');
         $end = $request->input('end');
@@ -130,7 +131,7 @@ class CalendarController extends Controller
             $events->push([
                 'id' => 'task-' . $task->id,
                 'title' => "\u{2705} " . $task->title,
-                'start' => $task->due_date->toISOString(),
+                'start' => \Carbon\Carbon::parse($task->due_date)->toDateString(),
                 'allDay' => true,
                 'color' => $task->status === 'completed' ? '#10B981' : '#F59E0B',
                 'extendedProps' => [
@@ -184,6 +185,9 @@ class CalendarController extends Controller
         }
 
         return response()->json($events->values());
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     // Create event

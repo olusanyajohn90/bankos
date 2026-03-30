@@ -4202,6 +4202,7 @@ function chatApp() {
                 this.inCall = true;
                 this.callType = type;
                 this.startCallTimer();
+                this.startCallStatusPoll();
             } catch (e) { console.error('startCall error', e); }
         },
 
@@ -4221,6 +4222,7 @@ function chatApp() {
                 this.callType = data.type || 'audio';
                 this.incomingCall = null;
                 this.startCallTimer();
+                this.startCallStatusPoll();
             } catch (e) { console.error('joinCall error', e); }
         },
 
@@ -4328,6 +4330,25 @@ function chatApp() {
             this.callScreenSharing = false;
             clearInterval(this.callTimer);
             this.callDuration = '00:00';
+        },
+
+        startCallStatusPoll() {
+            this._callStatusPoll = setInterval(async () => {
+                if (!this.callId || !this.inCall) { clearInterval(this._callStatusPoll); return; }
+                try {
+                    const res = await fetch(`/chat/conversations/${this.activeConversation.id}/active-call`, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (!data.call || data.call.status === 'ended' || data.call.status === 'declined') {
+                            if (this.livekitRoom) { this.livekitRoom.disconnect(); this.livekitRoom = null; }
+                            this.cleanupCall();
+                            clearInterval(this._callStatusPoll);
+                        }
+                    }
+                } catch {}
+            }, 3000);
         },
 
         startCallTimer() {
@@ -4565,5 +4586,5 @@ function chatApp() {
 </script>
 
 {{-- LiveKit JS SDK --}}
-<script src="https://unpkg.com/livekit-client/dist/livekit-client.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2.9.1/dist/livekit-client.umd.min.js"></script>
 @endpush

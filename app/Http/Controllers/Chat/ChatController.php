@@ -2580,7 +2580,7 @@ class ChatController extends Controller
     private function executeWorkflowStep(array $step, ChatWorkflow $workflow, $user): ?string
     {
         $action = $step['action'] ?? null;
-        $config = $step['config'] ?? [];
+        $config = $step['config'] ?? (is_string($step['config'] ?? null) ? $step['config'] : []);
 
         return match ($action) {
             'send_message' => $this->workflowSendMessage($workflow, $config),
@@ -2592,14 +2592,14 @@ class ChatController extends Controller
         };
     }
 
-    private function workflowSendMessage(ChatWorkflow $workflow, array $config): string
+    private function workflowSendMessage(ChatWorkflow $workflow, $config): string
     {
-        $conversationId = $config['conversation_id'] ?? $workflow->conversation_id;
+        $conversationId = is_array($config) ? ($config['conversation_id'] ?? $workflow->conversation_id) : $workflow->conversation_id;
         if (! $conversationId) {
             return 'no_conversation';
         }
 
-        $body = $config['message'] ?? $config['body'] ?? 'Automated message';
+        $body = is_string($config) ? $config : ($config['message'] ?? $config['body'] ?? 'Automated message');
 
         ChatMessage::create([
             'tenant_id'       => $workflow->tenant_id,
@@ -2613,21 +2613,36 @@ class ChatController extends Controller
         return 'message_sent';
     }
 
-    private function workflowCreateTask(ChatWorkflow $workflow, array $config, $user): string
+    private function workflowCreateTask(ChatWorkflow $workflow, $config, $user): string
     {
-        $conversationId = $config['conversation_id'] ?? $workflow->conversation_id;
+        $conversationId = $workflow->conversation_id;
         if (! $conversationId) {
             return 'no_conversation';
         }
 
+        // Config can be a string (title) or array with title/assigned_to
+        $title = is_string($config) ? $config : ($config['title'] ?? 'Auto-created task');
+        $assignedTo = is_array($config) ? ($config['assigned_to'] ?? $user->id) : $user->id;
+
+        // Create a system message for the task
+        $message = ChatMessage::create([
+            'tenant_id'       => $workflow->tenant_id,
+            'conversation_id' => $conversationId,
+            'sender_id'       => $workflow->created_by,
+            'body'            => "Task: {$title}",
+            'type'            => 'task',
+            'delivery_status' => 'sent',
+        ]);
+
         ChatTask::create([
             'tenant_id'       => $workflow->tenant_id,
             'conversation_id' => $conversationId,
-            'title'           => $config['title'] ?? 'Auto-created task',
-            'assigned_to'     => $config['assigned_to'] ?? $user->id,
+            'message_id'      => $message->id,
+            'title'           => $title,
+            'assigned_to'     => $assignedTo,
             'created_by'      => $workflow->created_by,
-            'status'          => 'open',
-            'due_at'          => isset($config['due_hours']) ? now()->addHours((int) $config['due_hours']) : null,
+            'status'          => 'pending',
+            'priority'        => 'medium',
         ]);
 
         return 'task_created';
