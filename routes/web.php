@@ -47,6 +47,7 @@ use App\Http\Controllers\Documents\DmsController;
 use App\Http\Controllers\Comms\CommsMessageController;
 use App\Http\Controllers\Comms\CommsInboxController;
 use App\Http\Controllers\Chat\ChatController;
+use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\FixedDeposit\FixedDepositController;
 use App\Http\Controllers\FixedDeposit\FixedDepositProductController;
 use App\Http\Controllers\StandingOrderController;
@@ -940,6 +941,18 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::patch('/workflows/{workflow}/toggle', [ChatController::class, 'toggleWorkflow'])->name('workflows.toggle');
         Route::post('/workflows/{workflow}/run', [ChatController::class, 'runWorkflow'])->name('workflows.run');
         Route::get('/workflows/{workflow}/runs', [ChatController::class, 'workflowRuns'])->name('workflows.runs');
+    });
+
+    // ── CALENDAR ─────────────────────────────────────────────────────────────
+    Route::prefix('calendar')->name('calendar.')->group(function () {
+        Route::get('/', [CalendarController::class, 'index'])->name('index');
+        Route::get('/events', [CalendarController::class, 'events'])->name('events');
+        Route::post('/events', [CalendarController::class, 'store'])->name('events.store');
+        Route::patch('/events/{event}', [CalendarController::class, 'update'])->name('events.update');
+        Route::delete('/events/{event}', [CalendarController::class, 'destroy'])->name('events.destroy');
+        Route::post('/events/{event}/respond', [CalendarController::class, 'respond'])->name('events.respond');
+        Route::get('/calendars', [CalendarController::class, 'calendars'])->name('calendars');
+        Route::post('/calendars', [CalendarController::class, 'createCalendar'])->name('calendars.store');
     });
 
     // ── PORTAL LOAN APPLICATIONS REVIEW ───────────────────────────────────────

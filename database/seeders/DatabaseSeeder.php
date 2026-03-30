@@ -158,5 +158,8 @@ class DatabaseSeeder extends Seeder
 
         // 23. Chat enhancements (channels, threads, polls, tasks, calls, canvas, etc.)
         $this->call(ChatEnhancementsSeeder::class);
+
+        // 24. Calendar (calendars, events, attendees, reminders)
+        $this->call(CalendarSeeder::class);
     }
 }
