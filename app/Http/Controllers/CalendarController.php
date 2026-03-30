@@ -70,40 +70,46 @@ class CalendarController extends Controller
 
         // Pull in leave requests (if table exists)
         $leaves = collect();
-        if (Schema::hasTable('leave_requests')) {
-            $leaves = DB::table('leave_requests')
-                ->join('users', 'leave_requests.user_id', '=', 'users.id')
-                ->where('users.tenant_id', $tenantId)
-                ->where('leave_requests.status', 'approved')
-                ->where(function ($q) use ($startDate, $endDate) {
-                    $q->whereBetween('start_date', [$startDate, $endDate])
-                      ->orWhereBetween('end_date', [$startDate, $endDate]);
-                })
-                ->select('leave_requests.*', 'users.name as user_name')
-                ->get();
-        }
+        try {
+            if (Schema::hasTable('leave_requests') && Schema::hasColumn('leave_requests', 'user_id')) {
+                $leaves = DB::table('leave_requests')
+                    ->join('users', 'leave_requests.user_id', '=', 'users.id')
+                    ->where('users.tenant_id', $tenantId)
+                    ->where('leave_requests.status', 'approved')
+                    ->where(function ($q) use ($startDate, $endDate) {
+                        $q->whereBetween('start_date', [$startDate, $endDate])
+                          ->orWhereBetween('end_date', [$startDate, $endDate]);
+                    })
+                    ->select('leave_requests.*', 'users.name as user_name')
+                    ->get();
+            }
+        } catch (\Exception $e) {}
 
         // Pull in public holidays
         $holidays = collect();
-        if (Schema::hasTable('public_holidays')) {
-            $holidays = DB::table('public_holidays')
-                ->whereBetween('date', [$startDate, $endDate])
-                ->get();
-        }
+        try {
+            if (Schema::hasTable('public_holidays')) {
+                $holidays = DB::table('public_holidays')
+                    ->whereBetween('date', [$startDate, $endDate])
+                    ->get();
+            }
+        } catch (\Exception $e) {}
 
         // Pull in loan maturities
         $loanMaturities = collect();
-        $loans = \App\Models\Loan::where('tenant_id', $tenantId)
-            ->whereIn('status', ['active', 'overdue'])
-            ->whereNotNull('disbursed_at')
-            ->with('customer')
-            ->get();
-        foreach ($loans as $loan) {
-            $maturityDate = \Carbon\Carbon::parse($loan->disbursed_at)->addDays($loan->tenure_days);
-            if ($maturityDate->between($startDate, $endDate)) {
-                $loanMaturities->push($loan);
+        try {
+            $loans = \App\Models\Loan::where('tenant_id', $tenantId)
+                ->whereIn('status', ['active', 'overdue'])
+                ->whereNotNull('disbursed_at')
+                ->with('customer')
+                ->get();
+            foreach ($loans as $loan) {
+                $maturityDate = \Carbon\Carbon::parse($loan->disbursed_at)->addDays($loan->tenure_days);
+                if ($maturityDate->between($startDate, $endDate)) {
+                    $loanMaturities->push($loan);
+                }
             }
-        }
+        } catch (\Exception $e) {}
 
         // Format all events into FullCalendar format
         $events = collect();
