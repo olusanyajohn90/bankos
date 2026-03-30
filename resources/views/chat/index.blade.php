@@ -4218,13 +4218,19 @@ function chatApp() {
                 });
                 if (!res.ok) { const e = await res.text(); alert('Failed to start call: ' + e.substring(0, 200)); return; }
                 const data = await res.json();
-                await this.connectToLiveKit(data.token, data.ws_url, type);
+                // Show call overlay immediately
                 this.callId = data.call_id;
                 this.inCall = true;
                 this.callType = type;
                 this.startCallTimer();
                 this.startCallStatusPoll();
-            } catch (e) { console.error('startCall error', e); }
+                // Then try LiveKit connection
+                try {
+                    await this.connectToLiveKit(data.token, data.ws_url, type);
+                } catch (lkErr) {
+                    console.error('LiveKit connection failed:', lkErr);
+                }
+            } catch (e) { console.error('startCall error', e); alert('Failed to start call: ' + e.message); }
         },
 
         async joinCall(callId) {
@@ -4235,16 +4241,22 @@ function chatApp() {
                     method: 'POST',
                     headers: { 'X-CSRF-TOKEN': this.csrfToken(), 'Accept': 'application/json' },
                 });
-                if (!res.ok) { alert('Failed to join call'); return; }
+                if (!res.ok) { const e = await res.text(); alert('Failed to join call: ' + e.substring(0, 200)); return; }
                 const data = await res.json();
-                await this.connectToLiveKit(data.token, data.ws_url, data.type || 'audio');
+                // Show call overlay immediately
                 this.callId = callId;
                 this.inCall = true;
                 this.callType = data.type || 'audio';
                 this.incomingCall = null;
                 this.startCallTimer();
                 this.startCallStatusPoll();
-            } catch (e) { console.error('joinCall error', e); }
+                // Then try to connect to LiveKit (may fail if SDK not loaded)
+                try {
+                    await this.connectToLiveKit(data.token, data.ws_url, data.type || 'audio');
+                } catch (lkErr) {
+                    console.error('LiveKit connection failed:', lkErr);
+                }
+            } catch (e) { console.error('joinCall error', e); alert('Failed to join call: ' + e.message); }
         },
 
         async declineCall() {
