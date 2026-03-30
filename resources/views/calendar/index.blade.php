@@ -712,20 +712,26 @@
                                 'X-CSRF-TOKEN': self.csrfToken,
                             },
                         })
-                        .then(r => r.json())
-                        .then(events => {
+                        .then(r => {
+                            if (!r.ok) throw new Error('HTTP ' + r.status);
+                            return r.json();
+                        })
+                        .then(data => {
+                            console.log('Calendar events received:', data);
+                            // Handle error response
+                            if (data.error) { console.error('Calendar API error:', data.error); successCallback([]); return; }
+                            const events = Array.isArray(data) ? data : [];
                             // Filter out hidden calendars
                             const filtered = events.filter(e => {
                                 if (self.hiddenCalendarIds.length === 0) return true;
-                                // Check if event's calendar_id is hidden
                                 const calId = e.extendedProps?.calendar_id;
                                 return !calId || !self.hiddenCalendarIds.includes(String(calId));
                             });
                             successCallback(filtered);
                         })
                         .catch(err => {
-                            console.error('Failed to load events:', err);
-                            failureCallback(err);
+                            console.error('Failed to load calendar events:', err);
+                            successCallback([]);
                         });
                     },
                     editable: true,

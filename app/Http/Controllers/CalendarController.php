@@ -59,11 +59,14 @@ class CalendarController extends Controller
             ->get();
 
         // Also pull in chat tasks with due_date in range
-        $tasks = \App\Models\ChatTask::where('tenant_id', $tenantId)
-            ->whereNotNull('due_date')
-            ->whereBetween('due_date', [$startDate, $endDate])
-            ->with('assignedTo')
-            ->get();
+        $tasks = collect();
+        try {
+            $tasks = \App\Models\ChatTask::where('tenant_id', $tenantId)
+                ->whereNotNull('due_date')
+                ->whereBetween('due_date', [$startDate, $endDate])
+                ->with('assignedTo')
+                ->get();
+        } catch (\Exception $e) {}
 
         // Pull in leave requests (if table exists)
         $leaves = collect();
@@ -72,9 +75,9 @@ class CalendarController extends Controller
                 ->join('users', 'leave_requests.user_id', '=', 'users.id')
                 ->where('users.tenant_id', $tenantId)
                 ->where('leave_requests.status', 'approved')
-                ->where(function ($q) use ($start, $end) {
-                    $q->whereBetween('start_date', [$start, $end])
-                      ->orWhereBetween('end_date', [$start, $end]);
+                ->where(function ($q) use ($startDate, $endDate) {
+                    $q->whereBetween('start_date', [$startDate, $endDate])
+                      ->orWhereBetween('end_date', [$startDate, $endDate]);
                 })
                 ->select('leave_requests.*', 'users.name as user_name')
                 ->get();
@@ -84,7 +87,7 @@ class CalendarController extends Controller
         $holidays = collect();
         if (Schema::hasTable('public_holidays')) {
             $holidays = DB::table('public_holidays')
-                ->whereBetween('date', [$start, $end])
+                ->whereBetween('date', [$startDate, $endDate])
                 ->get();
         }
 
@@ -97,7 +100,7 @@ class CalendarController extends Controller
             ->get();
         foreach ($loans as $loan) {
             $maturityDate = \Carbon\Carbon::parse($loan->disbursed_at)->addDays($loan->tenure_days);
-            if ($maturityDate->between($start, $end)) {
+            if ($maturityDate->between($startDate, $endDate)) {
                 $loanMaturities->push($loan);
             }
         }
