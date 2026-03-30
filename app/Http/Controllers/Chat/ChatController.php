@@ -1984,15 +1984,13 @@ class ChatController extends Controller
             'type' => 'required|in:audio,video',
         ]);
 
-        // Auto-end stale calls (ringing > 2 min or active > 2 hours)
-        ChatCall::where('conversation_id', $conversation->id)
-            ->where('status', 'ringing')
-            ->where('created_at', '<', now()->subMinutes(2))
-            ->update(['status' => 'ended', 'ended_at' => now()]);
+        // Auto-end ALL stale calls globally (ringing > 30s or active > 30 min)
+        ChatCall::where('status', 'ringing')
+            ->where('created_at', '<', now()->subSeconds(30))
+            ->update(['status' => 'missed', 'ended_at' => now()]);
 
-        ChatCall::where('conversation_id', $conversation->id)
-            ->where('status', 'active')
-            ->where('created_at', '<', now()->subHours(2))
+        ChatCall::where('status', 'active')
+            ->where('created_at', '<', now()->subMinutes(30))
             ->update(['status' => 'ended', 'ended_at' => now()]);
 
         // Prevent duplicate active calls in the same conversation
@@ -2203,6 +2201,12 @@ class ChatController extends Controller
     {
         $user = auth()->user();
         $this->abortIfNotParticipant($conversation, $user);
+
+        // Auto-cleanup stale calls
+        ChatCall::where('conversation_id', $conversation->id)
+            ->where('status', 'ringing')
+            ->where('created_at', '<', now()->subSeconds(30))
+            ->update(['status' => 'missed', 'ended_at' => now()]);
 
         $call = ChatCall::where('conversation_id', $conversation->id)
             ->whereIn('status', ['ringing', 'active'])
