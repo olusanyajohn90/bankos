@@ -27,7 +27,7 @@ class LiveKitService
 
         $videoGrant = (new VideoGrant())
             ->setRoomJoin(true)
-            ->setRoom($roomName);
+            ->setRoomName($roomName);
 
         $token = (new AccessToken($this->apiKey, $this->apiSecret))
             ->init($tokenOptions)

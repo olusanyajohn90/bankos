@@ -2523,11 +2523,12 @@ class ChatController extends Controller
         }
 
         $body = $message->body ?? '';
+        $triggerValue = $trigger['config'] ?? $trigger['value'] ?? '';
 
         return match ($trigger['type']) {
-            'message_contains' => ! empty($trigger['value']) && stripos($body, $trigger['value']) !== false,
-            'keyword'          => ! empty($trigger['value']) && preg_match('/\b' . preg_quote($trigger['value'], '/') . '\b/i', $body),
-            'message_from'     => ! empty($trigger['value']) && (string) $message->sender_id === (string) $trigger['value'],
+            'message_contains' => ! empty($triggerValue) && stripos($body, $triggerValue) !== false,
+            'keyword'          => ! empty($triggerValue) && preg_match('/\b' . preg_quote($triggerValue, '/') . '\b/i', $body),
+            'message_from'     => ! empty($triggerValue) && (string) $message->sender_id === (string) $triggerValue,
             'new_member'       => false, // Handled elsewhere (addParticipants)
             'scheduled'        => false, // Handled by scheduler
             default            => false,
