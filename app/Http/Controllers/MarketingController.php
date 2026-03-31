@@ -508,7 +508,7 @@ class MarketingController extends Controller
             ->get();
 
         foreach ($loanNoInsurance as $customer) {
-            $loanAmount = $customer->loans()->where('status', 'active')->sum('amount');
+            $loanAmount = $customer->loans()->where('status', 'active')->sum('principal_amount');
             MarketingCrossSell::create([
                 'tenant_id'          => $tenantId,
                 'customer_id'        => $customer->id,
@@ -580,14 +580,15 @@ class MarketingController extends Controller
         $tenantId = auth()->user()->tenant_id;
 
         // Channel breakdown
-        $channelStats = MarketingCampaign::selectRaw("channel, COUNT(*) as count, SUM(sent_count) as sent, SUM(delivered_count) as delivered, SUM(opened_count) as opened")
+        $channelStats = MarketingCampaign::where('tenant_id', $tenantId)
+            ->selectRaw("channel, COUNT(*) as count, SUM(sent_count) as sent, SUM(delivered_count) as delivered, SUM(opened_count) as opened")
             ->groupBy('channel')
             ->get();
 
         // Monthly performance (last 6 months)
-        $monthlyStats = MarketingCampaign::selectRaw("DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as campaigns, SUM(sent_count) as sent, SUM(delivered_count) as delivered, SUM(opened_count) as opened, SUM(converted_count) as converted")
+        $monthlyStats = MarketingCampaign::selectRaw("TO_CHAR(created_at, 'YYYY-MM') as month, COUNT(*) as campaigns, SUM(sent_count) as sent, SUM(delivered_count) as delivered, SUM(opened_count) as opened, SUM(converted_count) as converted")
             ->where('created_at', '>=', now()->subMonths(6))
-            ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
+            ->groupByRaw("TO_CHAR(created_at, 'YYYY-MM')")
             ->orderBy('month')
             ->get();
 
