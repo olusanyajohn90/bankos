@@ -74,4 +74,14 @@ class Customer extends Authenticatable
     {
         return $this->morphMany(\App\Models\Document::class, 'documentable');
     }
+
+    public function insurancePolicies()
+    {
+        return $this->hasMany(InsurancePolicy::class);
+    }
+
+    public function crossSells()
+    {
+        return $this->hasMany(MarketingCrossSell::class);
+    }
 }

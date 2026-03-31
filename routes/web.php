@@ -1111,6 +1111,40 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/{id}/approve', [\App\Http\Controllers\Cooperative\MemberExitController::class, 'approve'])->name('approve');
         Route::post('/{id}/settle', [\App\Http\Controllers\Cooperative\MemberExitController::class, 'settle'])->name('settle');
     });
+
+    // ── MARKETING CAMPAIGN MANAGEMENT ───────────────────────────────────────────
+    Route::prefix('marketing')->name('marketing.')->group(function () {
+        Route::get('/', [App\Http\Controllers\MarketingController::class, 'index'])->name('index');
+
+        // Campaigns
+        Route::get('/campaigns', [App\Http\Controllers\MarketingController::class, 'campaigns'])->name('campaigns');
+        Route::get('/campaigns/create', [App\Http\Controllers\MarketingController::class, 'createCampaign'])->name('campaigns.create');
+        Route::post('/campaigns', [App\Http\Controllers\MarketingController::class, 'storeCampaign'])->name('campaigns.store');
+        Route::get('/campaigns/{id}', [App\Http\Controllers\MarketingController::class, 'showCampaign'])->name('campaigns.show');
+        Route::post('/campaigns/{id}/send', [App\Http\Controllers\MarketingController::class, 'sendCampaign'])->name('campaigns.send');
+        Route::post('/campaigns/{id}/pause', [App\Http\Controllers\MarketingController::class, 'pauseCampaign'])->name('campaigns.pause');
+        Route::post('/campaigns/{id}/duplicate', [App\Http\Controllers\MarketingController::class, 'duplicateCampaign'])->name('campaigns.duplicate');
+
+        // Segments
+        Route::get('/segments', [App\Http\Controllers\MarketingController::class, 'segments'])->name('segments');
+        Route::get('/segments/create', [App\Http\Controllers\MarketingController::class, 'createSegment'])->name('segments.create');
+        Route::post('/segments', [App\Http\Controllers\MarketingController::class, 'storeSegment'])->name('segments.store');
+        Route::post('/segments/preview', [App\Http\Controllers\MarketingController::class, 'previewSegment'])->name('segments.preview');
+        Route::delete('/segments/{id}', [App\Http\Controllers\MarketingController::class, 'deleteSegment'])->name('segments.delete');
+
+        // Templates
+        Route::get('/templates', [App\Http\Controllers\MarketingController::class, 'templates'])->name('templates');
+        Route::post('/templates', [App\Http\Controllers\MarketingController::class, 'storeTemplate'])->name('templates.store');
+        Route::delete('/templates/{id}', [App\Http\Controllers\MarketingController::class, 'deleteTemplate'])->name('templates.delete');
+
+        // Cross-sell
+        Route::get('/cross-sells', [App\Http\Controllers\MarketingController::class, 'crossSells'])->name('cross-sells');
+        Route::post('/cross-sells/generate', [App\Http\Controllers\MarketingController::class, 'generateCrossSells'])->name('cross-sells.generate');
+        Route::patch('/cross-sells/{id}', [App\Http\Controllers\MarketingController::class, 'updateCrossSell'])->name('cross-sells.update');
+
+        // Analytics
+        Route::get('/analytics', [App\Http\Controllers\MarketingController::class, 'analytics'])->name('analytics');
+    });
 });
 
 // ── SUPER ADMIN — Platform Control Tower ─────────────────────────────────────
