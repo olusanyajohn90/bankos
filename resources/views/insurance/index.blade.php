@@ -9,12 +9,10 @@
             <h1 class="text-2xl font-bold text-gray-900">Insurance Policies</h1>
             <p class="text-sm text-gray-500 mt-1">Embedded credit life, health, and asset insurance</p>
         </div>
-        @can('create insurance')
         <a href="{{ route('insurance.create') }}" class="btn btn-primary">
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             New Policy
         </a>
-        @endcan
     </div>
 
     <form method="GET" class="card p-4 flex flex-wrap gap-4">
