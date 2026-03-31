@@ -1178,6 +1178,16 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::post('/recommendations/generate', [App\Http\Controllers\MarketingController::class, 'generateRecommendations'])->name('recommendations.generate');
         Route::patch('/recommendations/{id}/dismiss', [App\Http\Controllers\MarketingController::class, 'dismissRecommendation'])->name('recommendations.dismiss');
     });
+
+    // ── CORTEX AI ────────────────────────────────────────────────────────────────
+    Route::prefix('cortex')->name('cortex.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\CortexController::class, 'dashboard'])->name('dashboard');
+        Route::get('/loan-scoring/{loan}', [\App\Http\Controllers\CortexController::class, 'scoreLoan'])->name('loan-scoring');
+        Route::get('/fraud-alerts', [\App\Http\Controllers\CortexController::class, 'fraudAlerts'])->name('fraud-alerts');
+        Route::get('/churn-risk', [\App\Http\Controllers\CortexController::class, 'churnRisk'])->name('churn-risk');
+        Route::get('/customer/{customer}', [\App\Http\Controllers\CortexController::class, 'customerInsight'])->name('customer');
+        Route::post('/batch-analysis', [\App\Http\Controllers\CortexController::class, 'batchAnalysis'])->name('batch-analysis');
+    });
 });
 
 // ── SUPER ADMIN — Platform Control Tower ─────────────────────────────────────
