@@ -246,8 +246,48 @@ class LoanController extends Controller
                 'status' => 'active',
                 'disbursed_at' => now(),
                 // Basic date calculation, assuming months for MVP simplicity
-                'expected_maturity_date' => now()->addMonths($loan->duration), 
+                'expected_maturity_date' => now()->addMonths($loan->duration),
             ]);
+
+            // ── Auto-create insurance policy if loan product has insurance_fee ──
+            $loan->load('loanProduct');
+            $insuranceFee = (float) ($loan->loanProduct->insurance_fee ?? 0);
+            if ($insuranceFee > 0) {
+                $premium = round($loan->principal_amount * ($insuranceFee / 100), 2);
+                $maturityDate = now()->addDays($loan->tenure_days);
+
+                // Create the insurance policy
+                \App\Models\InsurancePolicy::create([
+                    'tenant_id'         => $loan->tenant_id,
+                    'customer_id'       => $loan->customer_id,
+                    'loan_id'           => $loan->id,
+                    'policy_number'     => 'POL-' . now()->format('Y') . '-' . strtoupper(Str::random(6)),
+                    'provider'          => 'leadway',
+                    'product'           => 'credit_life',
+                    'sum_assured'       => $loan->principal_amount,
+                    'premium'           => $premium,
+                    'premium_frequency' => 'single',
+                    'start_date'        => now()->toDateString(),
+                    'end_date'          => $maturityDate->toDateString(),
+                    'status'            => 'active',
+                    'notes'             => "Auto-created on loan disbursement. Premium: " . number_format($premium, 2) . " ({$insuranceFee}% of principal).",
+                ]);
+
+                // Deduct premium from customer's account (insurance charge)
+                $account->decrement('available_balance', $premium);
+                $account->decrement('ledger_balance', $premium);
+
+                // Record the insurance fee transaction
+                Transaction::create([
+                    'account_id'  => $account->id,
+                    'reference'   => 'INS-' . strtoupper(Str::random(10)),
+                    'type'        => 'fee',
+                    'amount'      => -$premium,
+                    'currency'    => $account->currency,
+                    'description' => "Credit Life Insurance Premium for Loan {$loan->loan_number}",
+                    'status'      => 'success',
+                ]);
+            }
 
             DB::commit();
 
