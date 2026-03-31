@@ -54,9 +54,10 @@ class InsuranceController extends Controller
         return redirect()->route('insurance.index')->with('success', 'Insurance policy created.');
     }
 
-    public function show(InsurancePolicy $insurancePolicy)
+    public function show(InsurancePolicy $insurance)
     {
-        $insurancePolicy->load(['customer', 'loan']);
+        $insurance->load(['customer', 'loan']);
+        $insurancePolicy = $insurance;
         return view('insurance.show', compact('insurancePolicy'));
     }
 

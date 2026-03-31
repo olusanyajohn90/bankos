@@ -20,7 +20,7 @@
             </div>
             <div>
                 <dt class="text-gray-500">Linked Loan</dt>
-                <dd class="font-mono mt-1">{{ $insurancePolicy->loan?->loan_account_number ?? '—' }}</dd>
+                <dd class="font-mono mt-1">{{ $insurancePolicy->loan?->loan_number ?? '—' }}</dd>
             </div>
             <div>
                 <dt class="text-gray-500">Product</dt>
