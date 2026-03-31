@@ -461,6 +461,21 @@
                 <a href="{{ route('marketing.analytics') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('marketing.analytics') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
                     <span>Analytics</span>
                 </a>
+                <a href="{{ route('marketing.loyalty') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('marketing.loyalty*') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Loyalty</span>
+                </a>
+                <a href="{{ route('marketing.offers') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('marketing.offers*') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Offers</span>
+                </a>
+                <a href="{{ route('marketing.surveys') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('marketing.surveys*') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Surveys</span>
+                </a>
+                <a href="{{ route('marketing.automations') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('marketing.automations*') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Automations</span>
+                </a>
+                <a href="{{ route('marketing.recommendations') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('marketing.recommendations*') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Recommendations</span>
+                </a>
             </div>
         </div>
 

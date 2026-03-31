@@ -3,10 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\LoyaltyPoints;
+use App\Models\LoyaltyProgram;
+use App\Models\LoyaltyTransaction;
+use App\Models\MarketingAutomation;
+use App\Models\MarketingAutomationLog;
 use App\Models\MarketingCampaign;
 use App\Models\MarketingCampaignRecipient;
 use App\Models\MarketingCrossSell;
+use App\Models\MarketingOffer;
+use App\Models\MarketingOfferRedemption;
+use App\Models\MarketingRecommendation;
 use App\Models\MarketingSegment;
+use App\Models\MarketingSurvey;
+use App\Models\MarketingSurveyResponse;
 use App\Models\MarketingTemplate;
 use App\Models\MarketingUnsubscribe;
 use App\Models\User;
@@ -613,5 +623,574 @@ class MarketingController extends Controller
             'deliveryRate', 'openRate', 'conversionRate',
             'totalSent', 'totalDelivered', 'totalOpened', 'totalConverted'
         ));
+    }
+
+    // ─── LOYALTY PROGRAM ────────────────────────────────────────────────────────
+
+    public function loyalty()
+    {
+        $tenantId = auth()->user()->tenant_id;
+        $program  = LoyaltyProgram::first();
+
+        $topMembers = LoyaltyPoints::with('customer')
+            ->orderByDesc('current_balance')
+            ->take(10)
+            ->get();
+
+        $totalDistributed = LoyaltyTransaction::where('type', 'earned')->sum('points');
+        $totalRedeemed    = LoyaltyTransaction::where('type', 'redeemed')->sum('points');
+        $memberCount      = LoyaltyPoints::count();
+
+        // Tier breakdown
+        $tierBreakdown = LoyaltyPoints::selectRaw('current_tier, COUNT(*) as count')
+            ->groupBy('current_tier')
+            ->get()
+            ->pluck('count', 'current_tier');
+
+        $customers = Customer::where('tenant_id', $tenantId)->where('status', 'active')->orderBy('first_name')->get();
+
+        return view('marketing.loyalty.index', compact(
+            'program', 'topMembers', 'totalDistributed', 'totalRedeemed',
+            'memberCount', 'tierBreakdown', 'customers'
+        ));
+    }
+
+    public function loyaltyMembers()
+    {
+        $members = LoyaltyPoints::with('customer', 'program')
+            ->orderByDesc('current_balance')
+            ->paginate(25);
+
+        return view('marketing.loyalty.members', compact('members'));
+    }
+
+    public function loyaltySetup(Request $request)
+    {
+        $request->validate([
+            'name'               => 'required|string|max:200',
+            'tiers'              => 'nullable|array',
+            'earning_rules'      => 'nullable|array',
+            'redemption_options' => 'nullable|array',
+            'points_expiry_months' => 'nullable|integer|min:1',
+        ]);
+
+        $tenantId = auth()->user()->tenant_id;
+
+        LoyaltyProgram::updateOrCreate(
+            ['tenant_id' => $tenantId],
+            [
+                'name'               => $request->name,
+                'description'        => $request->description,
+                'is_active'          => true,
+                'tiers'              => $request->tiers ?? [],
+                'earning_rules'      => $request->earning_rules ?? [],
+                'redemption_options' => $request->redemption_options ?? [],
+                'points_expiry_months' => $request->points_expiry_months,
+            ]
+        );
+
+        return back()->with('success', 'Loyalty program saved.');
+    }
+
+    public function awardPoints(Request $request)
+    {
+        $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'points'      => 'required|integer|min:1',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        $tenantId = auth()->user()->tenant_id;
+        $program  = LoyaltyProgram::where('tenant_id', $tenantId)->first();
+
+        if (!$program) {
+            return back()->with('error', 'No loyalty program configured.');
+        }
+
+        $membership = LoyaltyPoints::firstOrCreate(
+            ['tenant_id' => $tenantId, 'customer_id' => $request->customer_id, 'program_id' => $program->id],
+            ['total_earned' => 0, 'total_redeemed' => 0, 'current_balance' => 0, 'current_tier' => 'bronze']
+        );
+
+        $membership->increment('total_earned', $request->points);
+        $membership->increment('current_balance', $request->points);
+
+        // Recalculate tier based on total earned
+        $tiers = $program->tiers ?? [];
+        $newTier = 'bronze';
+        foreach ($tiers as $tier) {
+            if ($membership->total_earned >= ($tier['min_points'] ?? 0)) {
+                $newTier = $tier['name'] ?? 'bronze';
+            }
+        }
+        $membership->update(['current_tier' => strtolower($newTier)]);
+
+        LoyaltyTransaction::create([
+            'tenant_id'   => $tenantId,
+            'customer_id' => $request->customer_id,
+            'program_id'  => $program->id,
+            'type'        => 'earned',
+            'points'      => $request->points,
+            'description' => $request->description ?? 'Manual award by ' . auth()->user()->name,
+            'source'      => 'manual',
+            'expires_at'  => $program->points_expiry_months ? now()->addMonths($program->points_expiry_months) : null,
+        ]);
+
+        return back()->with('success', $request->points . ' points awarded.');
+    }
+
+    public function redeemPoints(Request $request)
+    {
+        $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'points'      => 'required|integer|min:1',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        $tenantId = auth()->user()->tenant_id;
+        $program  = LoyaltyProgram::where('tenant_id', $tenantId)->first();
+
+        if (!$program) {
+            return back()->with('error', 'No loyalty program configured.');
+        }
+
+        $membership = LoyaltyPoints::where('customer_id', $request->customer_id)
+            ->where('program_id', $program->id)
+            ->first();
+
+        if (!$membership || $membership->current_balance < $request->points) {
+            return back()->with('error', 'Insufficient points balance.');
+        }
+
+        $membership->increment('total_redeemed', $request->points);
+        $membership->decrement('current_balance', $request->points);
+
+        LoyaltyTransaction::create([
+            'tenant_id'   => $tenantId,
+            'customer_id' => $request->customer_id,
+            'program_id'  => $program->id,
+            'type'        => 'redeemed',
+            'points'      => $request->points,
+            'description' => $request->description ?? 'Manual redemption by ' . auth()->user()->name,
+            'source'      => 'manual',
+        ]);
+
+        return back()->with('success', $request->points . ' points redeemed.');
+    }
+
+    // ─── OFFERS & COUPONS ───────────────────────────────────────────────────────
+
+    public function offers()
+    {
+        $offers = MarketingOffer::with('segment', 'createdBy')
+            ->withCount('redemptions')
+            ->latest()
+            ->paginate(20);
+
+        return view('marketing.offers.index', compact('offers'));
+    }
+
+    public function createOffer()
+    {
+        $segments = MarketingSegment::orderBy('name')->get();
+
+        return view('marketing.offers.create', compact('segments'));
+    }
+
+    public function storeOffer(Request $request)
+    {
+        $request->validate([
+            'name'            => 'required|string|max:200',
+            'offer_type'      => 'required|string|max:50',
+            'coupon_code'     => 'nullable|string|max:50|unique:marketing_offers,coupon_code',
+            'segment_id'      => 'nullable|exists:marketing_segments,id',
+            'start_date'      => 'nullable|date',
+            'end_date'        => 'nullable|date|after_or_equal:start_date',
+            'max_redemptions' => 'nullable|integer|min:1',
+        ]);
+
+        MarketingOffer::create([
+            'tenant_id'       => auth()->user()->tenant_id,
+            'name'            => $request->name,
+            'description'     => $request->description,
+            'offer_type'      => $request->offer_type,
+            'offer_config'    => $request->offer_config ?? [],
+            'coupon_code'     => $request->coupon_code ? strtoupper($request->coupon_code) : null,
+            'segment_id'      => $request->segment_id,
+            'max_redemptions' => $request->max_redemptions,
+            'redemption_count' => 0,
+            'start_date'      => $request->start_date,
+            'end_date'        => $request->end_date,
+            'is_active'       => true,
+            'created_by'      => auth()->id(),
+        ]);
+
+        return redirect()->route('marketing.offers')->with('success', 'Offer created.');
+    }
+
+    public function toggleOffer($id)
+    {
+        $offer = MarketingOffer::findOrFail($id);
+        $offer->update(['is_active' => !$offer->is_active]);
+
+        return back()->with('success', 'Offer ' . ($offer->is_active ? 'activated' : 'deactivated') . '.');
+    }
+
+    public function validateCoupon(Request $request)
+    {
+        $request->validate([
+            'coupon_code'  => 'required|string',
+            'customer_id'  => 'nullable|exists:customers,id',
+        ]);
+
+        $offer = MarketingOffer::where('coupon_code', strtoupper($request->coupon_code))
+            ->where('is_active', true)
+            ->first();
+
+        if (!$offer) {
+            return response()->json(['valid' => false, 'message' => 'Coupon not found or inactive.']);
+        }
+
+        if ($offer->end_date && $offer->end_date->isPast()) {
+            return response()->json(['valid' => false, 'message' => 'Coupon has expired.']);
+        }
+
+        if ($offer->start_date && $offer->start_date->isFuture()) {
+            return response()->json(['valid' => false, 'message' => 'Coupon is not yet active.']);
+        }
+
+        if ($offer->max_redemptions && $offer->redemption_count >= $offer->max_redemptions) {
+            return response()->json(['valid' => false, 'message' => 'Coupon redemption limit reached.']);
+        }
+
+        if ($request->customer_id) {
+            $alreadyUsed = MarketingOfferRedemption::where('offer_id', $offer->id)
+                ->where('customer_id', $request->customer_id)
+                ->exists();
+            if ($alreadyUsed) {
+                return response()->json(['valid' => false, 'message' => 'Customer has already used this coupon.']);
+            }
+        }
+
+        return response()->json([
+            'valid'  => true,
+            'offer'  => [
+                'name'       => $offer->name,
+                'type'       => $offer->offer_type,
+                'config'     => $offer->offer_config,
+            ],
+            'message' => 'Coupon is valid.',
+        ]);
+    }
+
+    // ─── SURVEYS & FEEDBACK ─────────────────────────────────────────────────────
+
+    public function surveys()
+    {
+        $surveys = MarketingSurvey::with('createdBy')
+            ->withCount('responses')
+            ->latest()
+            ->paginate(20);
+
+        return view('marketing.surveys.index', compact('surveys'));
+    }
+
+    public function createSurvey()
+    {
+        $segments = MarketingSegment::orderBy('name')->get();
+
+        return view('marketing.surveys.create', compact('segments'));
+    }
+
+    public function storeSurvey(Request $request)
+    {
+        $request->validate([
+            'title'      => 'required|string|max:200',
+            'type'       => 'required|in:nps,csat,custom',
+            'questions'  => 'required|array|min:1',
+            'segment_id' => 'nullable|exists:marketing_segments,id',
+        ]);
+
+        MarketingSurvey::create([
+            'tenant_id'      => auth()->user()->tenant_id,
+            'title'          => $request->title,
+            'description'    => $request->description,
+            'type'           => $request->type,
+            'questions'      => $request->questions,
+            'is_active'      => true,
+            'segment_id'     => $request->segment_id,
+            'response_count' => 0,
+            'average_score'  => null,
+            'created_by'     => auth()->id(),
+        ]);
+
+        return redirect()->route('marketing.surveys')->with('success', 'Survey created.');
+    }
+
+    public function showSurvey($id)
+    {
+        $survey = MarketingSurvey::with('createdBy')->findOrFail($id);
+        $responses = MarketingSurveyResponse::where('survey_id', $id)
+            ->with('customer')
+            ->latest()
+            ->paginate(25);
+
+        // NPS breakdown (if NPS type)
+        $npsBreakdown = null;
+        if ($survey->type === 'nps') {
+            $allResponses = MarketingSurveyResponse::where('survey_id', $id)->get();
+            $total = $allResponses->count();
+            if ($total > 0) {
+                $promoters  = $allResponses->where('nps_score', '>=', 9)->count();
+                $passives   = $allResponses->whereBetween('nps_score', [7, 8])->count();
+                $detractors = $allResponses->where('nps_score', '<=', 6)->count();
+                $npsScore   = round((($promoters - $detractors) / $total) * 100);
+                $npsBreakdown = compact('promoters', 'passives', 'detractors', 'npsScore', 'total');
+            }
+        }
+
+        return view('marketing.surveys.show', compact('survey', 'responses', 'npsBreakdown'));
+    }
+
+    public function toggleSurvey($id)
+    {
+        $survey = MarketingSurvey::findOrFail($id);
+        $survey->update(['is_active' => !$survey->is_active]);
+
+        return back()->with('success', 'Survey ' . ($survey->is_active ? 'activated' : 'deactivated') . '.');
+    }
+
+    // ─── AUTOMATION WORKFLOWS ───────────────────────────────────────────────────
+
+    public function automations()
+    {
+        $automations = MarketingAutomation::with('createdBy')
+            ->latest()
+            ->paginate(20);
+
+        return view('marketing.automations.index', compact('automations'));
+    }
+
+    public function createAutomation()
+    {
+        $segments = MarketingSegment::orderBy('name')->get();
+        $templates = MarketingTemplate::orderBy('name')->get();
+        $users = User::where('tenant_id', auth()->user()->tenant_id)->orderBy('name')->get();
+
+        return view('marketing.automations.create', compact('segments', 'templates', 'users'));
+    }
+
+    public function storeAutomation(Request $request)
+    {
+        $request->validate([
+            'name'       => 'required|string|max:200',
+            'trigger'    => 'required|array',
+            'actions'    => 'required|array|min:1',
+            'conditions' => 'nullable|array',
+        ]);
+
+        MarketingAutomation::create([
+            'tenant_id'       => auth()->user()->tenant_id,
+            'name'            => $request->name,
+            'description'     => $request->description,
+            'is_active'       => true,
+            'trigger'         => $request->trigger,
+            'conditions'      => $request->conditions ?? [],
+            'actions'         => $request->actions,
+            'enrolled_count'  => 0,
+            'completed_count' => 0,
+            'created_by'      => auth()->id(),
+        ]);
+
+        return redirect()->route('marketing.automations')->with('success', 'Automation created.');
+    }
+
+    public function toggleAutomation($id)
+    {
+        $automation = MarketingAutomation::findOrFail($id);
+        $automation->update(['is_active' => !$automation->is_active]);
+
+        return back()->with('success', 'Automation ' . ($automation->is_active ? 'activated' : 'deactivated') . '.');
+    }
+
+    public function automationLogs($id)
+    {
+        $automation = MarketingAutomation::findOrFail($id);
+        $logs = MarketingAutomationLog::where('automation_id', $id)
+            ->with('customer')
+            ->latest()
+            ->paginate(25);
+
+        return view('marketing.automations.logs', compact('automation', 'logs'));
+    }
+
+    // ─── RECOMMENDATIONS ────────────────────────────────────────────────────────
+
+    public function recommendations()
+    {
+        $recommendations = MarketingRecommendation::with('customer')
+            ->where('status', '!=', 'dismissed')
+            ->orderByDesc('confidence_score')
+            ->paginate(25);
+
+        return view('marketing.recommendations.index', compact('recommendations'));
+    }
+
+    public function generateRecommendations()
+    {
+        $tenantId = auth()->user()->tenant_id;
+        $created  = 0;
+
+        // 1) Low balance savings → recommend fixed deposit
+        $lowBalance = Customer::where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->whereHas('accounts', fn($q) => $q->where('type', 'savings')->where('available_balance', '>', 50000))
+            ->whereDoesntHave('accounts', fn($q) => $q->where('type', 'fixed_deposit'))
+            ->take(100)
+            ->get();
+
+        foreach ($lowBalance as $customer) {
+            $exists = MarketingRecommendation::where('customer_id', $customer->id)
+                ->where('product_type', 'fixed_deposit')
+                ->whereIn('status', ['active', 'contacted'])
+                ->exists();
+            if ($exists) continue;
+
+            MarketingRecommendation::create([
+                'tenant_id'        => $tenantId,
+                'customer_id'      => $customer->id,
+                'product_type'     => 'fixed_deposit',
+                'product_name'     => 'Fixed Deposit Account',
+                'reason'           => 'High savings balance with no fixed deposit — opportunity for higher returns.',
+                'confidence_score' => 0.85,
+                'status'           => 'active',
+            ]);
+            $created++;
+        }
+
+        // 2) No loan but high savings → recommend personal loan
+        $highSavings = Customer::where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->whereHas('accounts', fn($q) => $q->where('type', 'savings')->where('available_balance', '>', 100000))
+            ->whereDoesntHave('loans')
+            ->take(100)
+            ->get();
+
+        foreach ($highSavings as $customer) {
+            $exists = MarketingRecommendation::where('customer_id', $customer->id)
+                ->where('product_type', 'personal_loan')
+                ->whereIn('status', ['active', 'contacted'])
+                ->exists();
+            if ($exists) continue;
+
+            MarketingRecommendation::create([
+                'tenant_id'        => $tenantId,
+                'customer_id'      => $customer->id,
+                'product_type'     => 'personal_loan',
+                'product_name'     => 'Personal Loan',
+                'reason'           => 'High savings balance with no existing loan — strong repayment capacity.',
+                'confidence_score' => 0.78,
+                'status'           => 'active',
+            ]);
+            $created++;
+        }
+
+        // 3) Active loan near maturity → recommend renewal
+        $nearMaturity = Customer::where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->whereHas('loans', fn($q) => $q->where('status', 'active')->where('maturity_date', '<=', now()->addDays(30))->where('maturity_date', '>', now()))
+            ->take(100)
+            ->get();
+
+        foreach ($nearMaturity as $customer) {
+            $exists = MarketingRecommendation::where('customer_id', $customer->id)
+                ->where('product_type', 'loan_renewal')
+                ->whereIn('status', ['active', 'contacted'])
+                ->exists();
+            if ($exists) continue;
+
+            MarketingRecommendation::create([
+                'tenant_id'        => $tenantId,
+                'customer_id'      => $customer->id,
+                'product_type'     => 'loan_renewal',
+                'product_name'     => 'Loan Renewal',
+                'reason'           => 'Active loan nearing maturity — proactive renewal offer.',
+                'confidence_score' => 0.92,
+                'status'           => 'active',
+            ]);
+            $created++;
+        }
+
+        // 4) No insurance → recommend credit life
+        $noInsurance = Customer::where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->whereHas('loans', fn($q) => $q->where('status', 'active'))
+            ->whereDoesntHave('insurancePolicies')
+            ->take(100)
+            ->get();
+
+        foreach ($noInsurance as $customer) {
+            $exists = MarketingRecommendation::where('customer_id', $customer->id)
+                ->where('product_type', 'credit_life_insurance')
+                ->whereIn('status', ['active', 'contacted'])
+                ->exists();
+            if ($exists) continue;
+
+            MarketingRecommendation::create([
+                'tenant_id'        => $tenantId,
+                'customer_id'      => $customer->id,
+                'product_type'     => 'credit_life_insurance',
+                'product_name'     => 'Credit Life Insurance',
+                'reason'           => 'Active loan without insurance coverage — risk mitigation opportunity.',
+                'confidence_score' => 0.88,
+                'status'           => 'active',
+            ]);
+            $created++;
+        }
+
+        // 5) High transaction volume → recommend business account upgrade
+        $highVolume = Customer::where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->whereDoesntHave('accounts', fn($q) => $q->where('type', 'business'))
+            ->whereHas('accounts', function ($q) {
+                $q->whereHas('transactions', fn($tq) => $tq->where('created_at', '>=', now()->subDays(30)));
+            })
+            ->take(100)
+            ->get();
+
+        foreach ($highVolume as $customer) {
+            $txnCount = 0;
+            foreach ($customer->accounts as $acct) {
+                $txnCount += $acct->transactions()->where('created_at', '>=', now()->subDays(30))->count();
+            }
+            if ($txnCount < 50) continue;
+
+            $exists = MarketingRecommendation::where('customer_id', $customer->id)
+                ->where('product_type', 'business_account')
+                ->whereIn('status', ['active', 'contacted'])
+                ->exists();
+            if ($exists) continue;
+
+            MarketingRecommendation::create([
+                'tenant_id'        => $tenantId,
+                'customer_id'      => $customer->id,
+                'product_type'     => 'business_account',
+                'product_name'     => 'Business Account Upgrade',
+                'reason'           => "High transaction volume ({$txnCount} txns/month) — business account benefits.",
+                'confidence_score' => 0.75,
+                'status'           => 'active',
+            ]);
+            $created++;
+        }
+
+        return back()->with('success', "{$created} recommendations generated.");
+    }
+
+    public function dismissRecommendation($id)
+    {
+        $recommendation = MarketingRecommendation::findOrFail($id);
+        $recommendation->update(['status' => 'dismissed']);
+
+        return back()->with('success', 'Recommendation dismissed.');
     }
 }

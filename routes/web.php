@@ -1144,6 +1144,39 @@ Route::middleware(['auth', 'tenant'])->group(function () {
 
         // Analytics
         Route::get('/analytics', [App\Http\Controllers\MarketingController::class, 'analytics'])->name('analytics');
+
+        // Loyalty
+        Route::get('/loyalty', [App\Http\Controllers\MarketingController::class, 'loyalty'])->name('loyalty');
+        Route::get('/loyalty/members', [App\Http\Controllers\MarketingController::class, 'loyaltyMembers'])->name('loyalty.members');
+        Route::post('/loyalty/setup', [App\Http\Controllers\MarketingController::class, 'loyaltySetup'])->name('loyalty.setup');
+        Route::post('/loyalty/award', [App\Http\Controllers\MarketingController::class, 'awardPoints'])->name('loyalty.award');
+        Route::post('/loyalty/redeem', [App\Http\Controllers\MarketingController::class, 'redeemPoints'])->name('loyalty.redeem');
+
+        // Offers
+        Route::get('/offers', [App\Http\Controllers\MarketingController::class, 'offers'])->name('offers');
+        Route::get('/offers/create', [App\Http\Controllers\MarketingController::class, 'createOffer'])->name('offers.create');
+        Route::post('/offers', [App\Http\Controllers\MarketingController::class, 'storeOffer'])->name('offers.store');
+        Route::patch('/offers/{id}/toggle', [App\Http\Controllers\MarketingController::class, 'toggleOffer'])->name('offers.toggle');
+        Route::post('/offers/validate-coupon', [App\Http\Controllers\MarketingController::class, 'validateCoupon'])->name('offers.validate-coupon');
+
+        // Surveys
+        Route::get('/surveys', [App\Http\Controllers\MarketingController::class, 'surveys'])->name('surveys');
+        Route::get('/surveys/create', [App\Http\Controllers\MarketingController::class, 'createSurvey'])->name('surveys.create');
+        Route::post('/surveys', [App\Http\Controllers\MarketingController::class, 'storeSurvey'])->name('surveys.store');
+        Route::get('/surveys/{id}', [App\Http\Controllers\MarketingController::class, 'showSurvey'])->name('surveys.show');
+        Route::patch('/surveys/{id}/toggle', [App\Http\Controllers\MarketingController::class, 'toggleSurvey'])->name('surveys.toggle');
+
+        // Automations
+        Route::get('/automations', [App\Http\Controllers\MarketingController::class, 'automations'])->name('automations');
+        Route::get('/automations/create', [App\Http\Controllers\MarketingController::class, 'createAutomation'])->name('automations.create');
+        Route::post('/automations', [App\Http\Controllers\MarketingController::class, 'storeAutomation'])->name('automations.store');
+        Route::patch('/automations/{id}/toggle', [App\Http\Controllers\MarketingController::class, 'toggleAutomation'])->name('automations.toggle');
+        Route::get('/automations/{id}/logs', [App\Http\Controllers\MarketingController::class, 'automationLogs'])->name('automations.logs');
+
+        // Recommendations
+        Route::get('/recommendations', [App\Http\Controllers\MarketingController::class, 'recommendations'])->name('recommendations');
+        Route::post('/recommendations/generate', [App\Http\Controllers\MarketingController::class, 'generateRecommendations'])->name('recommendations.generate');
+        Route::patch('/recommendations/{id}/dismiss', [App\Http\Controllers\MarketingController::class, 'dismissRecommendation'])->name('recommendations.dismiss');
     });
 });
 
