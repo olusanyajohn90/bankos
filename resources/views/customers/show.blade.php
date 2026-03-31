@@ -1127,9 +1127,9 @@
                     </h3>
                     <div x-show="!loading" class="flex items-center gap-2">
                         <select x-model="engine" class="text-sm rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/30">
+                            <option value="builtin">Cortex Standard (Free)</option>
+                            <option value="claude">Cortex Extended (Premium)</option>
                             <option value="auto">Auto (Best Available)</option>
-                            <option value="claude">Claude AI</option>
-                            <option value="builtin">Built-in Engine</option>
                         </select>
                         <button @click="generateReview()" class="btn btn-primary bg-indigo-600 border-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" :class="hasGenerated ? 'rotate-180 transition-transform duration-500' : ''"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
@@ -1170,7 +1170,7 @@
                     <div class="mt-6 flex items-center justify-between">
                         <p class="text-xs text-bankos-muted flex items-center gap-1">
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-                            <span x-text="engine === 'claude' ? 'Powered by Claude AI' : (engine === 'builtin' ? 'Built-in analysis engine' : 'Auto-selected engine')"></span>
+                            <span x-text="engine === 'claude' ? 'Cortex Extended analysis' : (engine === 'builtin' ? 'Cortex Standard analysis' : 'Auto-selected engine')"></span>
                         </p>
                         <a href="{{ route('cortex.customer', $customer) }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:from-indigo-700 hover:to-purple-700 transition-all">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>

@@ -34,7 +34,7 @@ class AiReviewService
 
         if ($engine === 'claude') {
             if (empty($this->apiKey)) {
-                return "### ⚠️ Claude AI Not Configured\n\nThe Anthropic API key is not set. Please configure `ANTHROPIC_API_KEY` in your environment settings to use Claude AI analysis.\n\nIn the meantime, select **Built-in Engine** to use the rule-based analysis.";
+                return "### ⚠️ Cortex Extended Not Configured\n\nThe Cortex Extended AI engine requires an API key to be configured. Please contact your system administrator to enable Cortex Extended analysis.\n\nIn the meantime, select **Cortex Standard** to use the built-in analysis engine.";
             }
             // Force fresh Claude call (no cache)
             return $this->callClaudeApi($context, $customer);
