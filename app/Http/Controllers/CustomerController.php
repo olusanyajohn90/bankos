@@ -413,7 +413,7 @@ class CustomerController extends Controller
     /**
      * Generate an AI profile review via AiReviewService.
      */
-    public function generateAiReview(Customer $customer, AiReviewService $aiReviewService)
+    public function generateAiReview(Customer $customer, AiReviewService $aiReviewService, \Illuminate\Http\Request $request)
     {
         if (!auth()->user()->can('customers.view')) {
             abort(403, 'Unauthorized action.');
@@ -423,7 +423,8 @@ class CustomerController extends Controller
             abort(403);
         }
 
-        $review = $aiReviewService->generateReview($customer);
+        $engine = $request->query('engine', 'auto');
+        $review = $aiReviewService->generateReview($customer, $engine);
 
         return response()->json([
             'review' => \Illuminate\Support\Str::markdown($review)

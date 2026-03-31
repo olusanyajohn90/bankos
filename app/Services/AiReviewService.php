@@ -22,17 +22,30 @@ class AiReviewService
      * Generate a comprehensive AI review for a customer.
      * Uses Claude API when available, falls back to enhanced rule-based analysis.
      */
-    public function generateReview(Customer $customer): string
+    public function generateReview(Customer $customer, string $engine = 'auto'): string
     {
         $customer->load(['accounts', 'loans.loanProduct', 'insurancePolicies']);
         $context = $this->buildCustomerContext($customer);
 
-        // If no API key, fall back to enhanced rule-based analysis
+        // Engine selection: auto, claude, builtin
+        if ($engine === 'builtin') {
+            return $this->generateRuleBasedReview($customer, $context);
+        }
+
+        if ($engine === 'claude') {
+            if (empty($this->apiKey)) {
+                return "### ⚠️ Claude AI Not Configured\n\nThe Anthropic API key is not set. Please configure `ANTHROPIC_API_KEY` in your environment settings to use Claude AI analysis.\n\nIn the meantime, select **Built-in Engine** to use the rule-based analysis.";
+            }
+            // Force fresh Claude call (no cache)
+            return $this->callClaudeApi($context, $customer);
+        }
+
+        // Auto: prefer Claude if available, fallback to builtin
         if (empty($this->apiKey)) {
             return $this->generateRuleBasedReview($customer, $context);
         }
 
-        // Cache for 1 hour to avoid repeated API calls
+        // Cache Claude responses for 1 hour
         $cacheKey = "cortex_review_{$customer->id}_" . md5(json_encode($context));
         return Cache::remember($cacheKey, 3600, function () use ($context, $customer) {
             return $this->callClaudeApi($context, $customer);

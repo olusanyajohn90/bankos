@@ -1094,20 +1094,22 @@
         </script>
 
         <!-- AI INSIGHTS TAB -->
-        <div x-show="activeTab === 'ai_insights'" style="display: none;" 
-             x-data="{ 
-                loading: false, 
-                content: '', 
+        <div x-show="activeTab === 'ai_insights'" style="display: none;"
+             x-data="{
+                loading: false,
+                content: '',
                 hasGenerated: false,
+                engine: 'auto',
                 generateReview() {
                     this.loading = true;
-                    fetch('{{ route('customers.ai.review', $customer) }}')
+                    fetch('{{ route('customers.ai.review', $customer) }}?engine=' + this.engine)
                         .then(res => res.json())
                         .then(data => {
                             this.content = data.review;
                             this.loading = false;
                             this.hasGenerated = true;
-                        });
+                        })
+                        .catch(() => { this.loading = false; });
                 }
              }">
             <div class="card p-8 min-h-[400px] flex flex-col relative overflow-hidden ring-1 ring-indigo-500/20 shadow-[0_0_40px_-10px_rgba(79,70,229,0.15)]">
@@ -1123,10 +1125,17 @@
                         </span>
                         BankOS Cortex™ AI Insight
                     </h3>
-                    <button @click="generateReview()" x-show="!loading" class="btn btn-primary bg-indigo-600 border-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" :class="hasGenerated ? 'rotate-180 transition-transform duration-500' : ''"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
-                        <span x-text="hasGenerated ? 'Regenerate Analysis' : 'Run Deep Profile Scan'"></span>
-                    </button>
+                    <div x-show="!loading" class="flex items-center gap-2">
+                        <select x-model="engine" class="text-sm rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/30">
+                            <option value="auto">Auto (Best Available)</option>
+                            <option value="claude">Claude AI</option>
+                            <option value="builtin">Built-in Engine</option>
+                        </select>
+                        <button @click="generateReview()" class="btn btn-primary bg-indigo-600 border-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" :class="hasGenerated ? 'rotate-180 transition-transform duration-500' : ''"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                            <span x-text="hasGenerated ? 'Regenerate' : 'Run Deep Profile Scan'"></span>
+                        </button>
+                    </div>
                 </div>
 
                 <div x-show="!hasGenerated && !loading" class="flex-1 flex flex-col items-center justify-center text-center max-w-lg mx-auto z-10 transition-opacity" x-transition.opacity.duration.500ms>
@@ -1153,7 +1162,22 @@
                     <p class="text-indigo-600 font-medium animate-pulse tracking-wider text-sm font-mono uppercase">Cortex™ is analyzing metrics...</p>
                 </div>
 
-                <div x-show="hasGenerated && !loading" class="prose dark:prose-invert prose-indigo prose-sm max-w-none prose-headings:font-bold prose-h3:text-indigo-700 dark:prose-h3:text-indigo-400 prose-ul:mt-0 bg-white dark:bg-bankos-dark-bg p-8 rounded-xl ring-1 ring-gray-200 dark:ring-gray-800 shadow-sm z-10 transition-opacity" x-transition.opacity.duration.500ms x-html="content">
+                <div x-show="hasGenerated && !loading" class="z-10 transition-opacity" x-transition.opacity.duration.500ms>
+                    <div class="prose dark:prose-invert prose-indigo prose-sm max-w-none prose-headings:font-bold prose-h3:text-indigo-700 dark:prose-h3:text-indigo-400 prose-ul:mt-0 bg-white dark:bg-bankos-dark-bg p-8 rounded-xl ring-1 ring-gray-200 dark:ring-gray-800 shadow-sm" x-html="content">
+                    </div>
+
+                    {{-- Deep Dive button --}}
+                    <div class="mt-6 flex items-center justify-between">
+                        <p class="text-xs text-bankos-muted flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                            <span x-text="engine === 'claude' ? 'Powered by Claude AI' : (engine === 'builtin' ? 'Built-in analysis engine' : 'Auto-selected engine')"></span>
+                        </p>
+                        <a href="{{ route('cortex.customer', $customer) }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:from-indigo-700 hover:to-purple-700 transition-all">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                            Open Full Deep Dive
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
