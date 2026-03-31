@@ -26,30 +26,126 @@ class AiReviewService
     {
         $customer->load(['accounts', 'loans.loanProduct', 'insurancePolicies']);
         $context = $this->buildCustomerContext($customer);
+        $startTime = microtime(true);
 
         // Engine selection: auto, claude, builtin
         if ($engine === 'builtin') {
-            return $this->generateRuleBasedReview($customer, $context);
+            $result = $this->generateRuleBasedReview($customer, $context);
+            $this->trackUsage('profile_review', 'standard', $customer->id, 'customer', 0, 0, 0, $startTime, true);
+            return $result;
         }
 
         if ($engine === 'claude') {
             if (empty($this->apiKey)) {
-                return "### ⚠️ Cortex Extended Not Configured\n\nThe Cortex Extended AI engine requires an API key to be configured. Please contact your system administrator to enable Cortex Extended analysis.\n\nIn the meantime, select **Cortex Standard** to use the built-in analysis engine.";
+                return "### ⚠️ Cortex Extended Not Available\n\nCortex Extended AI engine is not configured for this institution. Please contact your administrator to enable premium AI analysis.\n\nSelect **Cortex Standard (Free)** for built-in analysis.";
             }
-            // Force fresh Claude call (no cache)
-            return $this->callClaudeApi($context, $customer);
+
+            // Check billing limits
+            $billingCheck = $this->checkBillingLimits();
+            if ($billingCheck !== true) {
+                return $billingCheck;
+            }
+
+            $result = $this->callClaudeApi($context, $customer);
+            $this->trackUsage('profile_review', 'extended', $customer->id, 'customer', 1500, 0.02, $this->getChargeAmount(), $startTime, true);
+            return $result;
         }
 
-        // Auto: prefer Claude if available, fallback to builtin
+        // Auto: prefer Extended if available + within limits, fallback to Standard
         if (empty($this->apiKey)) {
-            return $this->generateRuleBasedReview($customer, $context);
+            $result = $this->generateRuleBasedReview($customer, $context);
+            $this->trackUsage('profile_review', 'standard', $customer->id, 'customer', 0, 0, 0, $startTime, true);
+            return $result;
         }
 
-        // Cache Claude responses for 1 hour
+        $billingCheck = $this->checkBillingLimits();
+        if ($billingCheck !== true) {
+            $result = $this->generateRuleBasedReview($customer, $context);
+            $this->trackUsage('profile_review', 'standard', $customer->id, 'customer', 0, 0, 0, $startTime, true);
+            return $result;
+        }
+
         $cacheKey = "cortex_review_{$customer->id}_" . md5(json_encode($context));
-        return Cache::remember($cacheKey, 3600, function () use ($context, $customer) {
+        $result = Cache::remember($cacheKey, 3600, function () use ($context, $customer) {
             return $this->callClaudeApi($context, $customer);
         });
+        $this->trackUsage('profile_review', 'extended', $customer->id, 'customer', 1500, 0.02, $this->getChargeAmount(), $startTime, true);
+        return $result;
+    }
+
+    private function checkBillingLimits(): true|string
+    {
+        $tenantId = auth()->user()->tenant_id ?? null;
+        if (!$tenantId) return true;
+
+        $pricing = \Illuminate\Support\Facades\DB::table('cortex_pricing')->where('tenant_id', $tenantId)->first();
+
+        if ($pricing && !$pricing->extended_enabled) {
+            return "### ⚠️ Cortex Extended Disabled\n\nCortex Extended has been disabled for your institution. Contact your administrator.";
+        }
+
+        // Count this month's extended calls
+        $monthlyUsage = \Illuminate\Support\Facades\DB::table('cortex_usage')
+            ->where('tenant_id', $tenantId)
+            ->where('engine', 'extended')
+            ->where('created_at', '>=', now()->startOfMonth())
+            ->count();
+
+        $limit = $pricing->monthly_call_limit ?? 100;
+        if ($monthlyUsage >= $limit) {
+            return "### ⚠️ Monthly Limit Reached\n\nYour institution has used all **{$limit}** Cortex Extended analyses this month. The limit resets on the 1st.\n\nSelect **Cortex Standard (Free)** for unlimited built-in analysis.";
+        }
+
+        $freeAllowance = $pricing->free_monthly_calls ?? 10;
+        if ($monthlyUsage >= $freeAllowance) {
+            $charge = $pricing->price_per_extended_call ?? 500;
+            // Still allow but it's billable beyond free tier
+        }
+
+        return true;
+    }
+
+    private function getChargeAmount(): float
+    {
+        $tenantId = auth()->user()->tenant_id ?? null;
+        if (!$tenantId) return 0;
+
+        $pricing = \Illuminate\Support\Facades\DB::table('cortex_pricing')->where('tenant_id', $tenantId)->first();
+        $freeAllowance = $pricing->free_monthly_calls ?? 10;
+
+        $monthlyUsage = \Illuminate\Support\Facades\DB::table('cortex_usage')
+            ->where('tenant_id', $tenantId)
+            ->where('engine', 'extended')
+            ->where('created_at', '>=', now()->startOfMonth())
+            ->count();
+
+        if ($monthlyUsage < $freeAllowance) return 0;
+
+        return (float) ($pricing->price_per_extended_call ?? 500);
+    }
+
+    private function trackUsage(string $type, string $engine, ?string $subjectId, ?string $subjectType, int $tokens, float $cost, float $charge, float $startTime, bool $success, ?string $error = null): void
+    {
+        try {
+            \Illuminate\Support\Facades\DB::table('cortex_usage')->insert([
+                'tenant_id' => auth()->user()->tenant_id ?? '',
+                'user_id' => auth()->id() ?? 0,
+                'analysis_type' => $type,
+                'engine' => $engine,
+                'subject_id' => $subjectId,
+                'subject_type' => $subjectType,
+                'tokens_used' => $tokens,
+                'cost' => $cost,
+                'charge' => $charge,
+                'response_time_ms' => (int) ((microtime(true) - $startTime) * 1000),
+                'success' => $success,
+                'error' => $error,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } catch (\Exception $e) {
+            // Silent fail — don't break the analysis if tracking fails
+        }
     }
 
     /**
