@@ -73,7 +73,7 @@ class AiReviewService
         return $result;
     }
 
-    private function checkBillingLimits(): true|string
+    private function checkBillingLimits(): bool|string
     {
         $tenantId = auth()->user()->tenant_id ?? null;
         if (!$tenantId) return true;
