@@ -8,9 +8,56 @@ use App\Models\FixedAssetCategory;
 use App\Services\FixedAssetService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class FixedAssetController extends Controller
 {
+    public function dashboard()
+    {
+        $tenantId = auth()->user()->tenant_id;
+
+        $totalAssets       = FixedAsset::where('tenant_id', $tenantId)->count();
+        $activeAssets      = FixedAsset::where('tenant_id', $tenantId)->active()->count();
+        $totalCost         = FixedAsset::where('tenant_id', $tenantId)->active()->sum('purchase_cost');
+        $totalBookValue    = FixedAsset::where('tenant_id', $tenantId)->active()->sum('current_book_value');
+        $totalDepreciation = FixedAsset::where('tenant_id', $tenantId)->active()->sum('accumulated_depreciation');
+
+        // Fully depreciated
+        $fullyDepreciated = FixedAsset::where('tenant_id', $tenantId)
+            ->active()
+            ->whereColumn('current_book_value', '<=', 'residual_value')
+            ->count();
+
+        // Monthly depreciation charge (sum of all active assets)
+        $monthlyDeprCharge = FixedAsset::where('tenant_id', $tenantId)->active()->get()
+            ->sum(fn($a) => $a->monthly_depreciation);
+
+        // Assets by category (bar chart)
+        $byCategory = FixedAsset::where('fixed_assets.tenant_id', $tenantId)
+            ->where('fixed_assets.status', 'active')
+            ->join('fixed_asset_categories', 'fixed_assets.category_id', '=', 'fixed_asset_categories.id')
+            ->select('fixed_asset_categories.name', DB::raw('COUNT(*) as count'), DB::raw('SUM(fixed_assets.current_book_value) as total_nbv'))
+            ->groupBy('fixed_asset_categories.name')
+            ->orderByDesc('total_nbv')
+            ->get();
+
+        // Recently revalued (if revalue tracking exists)
+        $recentlyRevalued = FixedAsset::where('tenant_id', $tenantId)
+            ->active()
+            ->whereNotNull('last_depreciation_date')
+            ->orderByDesc('last_depreciation_date')
+            ->limit(5)
+            ->count();
+
+        // Disposed assets
+        $disposedCount = FixedAsset::where('tenant_id', $tenantId)->where('status', 'disposed')->count();
+
+        return view('fixed-assets.dashboard', compact(
+            'totalAssets', 'activeAssets', 'totalCost', 'totalBookValue', 'totalDepreciation',
+            'fullyDepreciated', 'monthlyDeprCharge', 'byCategory', 'recentlyRevalued', 'disposedCount'
+        ));
+    }
+
     public function index(Request $request)
     {
         $tenantId = auth()->user()->tenant_id;

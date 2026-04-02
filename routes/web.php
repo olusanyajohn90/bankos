@@ -299,6 +299,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::post('collections/{loan}/log', [CollectionController::class, 'logAction'])->name('collections.log');
 
     // Insurance
+    Route::get('insurance/dashboard', [InsuranceController::class, 'dashboard'])->name('insurance.dashboard');
     Route::resource('insurance', InsuranceController::class)->only(['index', 'create', 'store', 'show']);
     Route::patch('insurance/{insurancePolicy}', [InsuranceController::class, 'update'])->name('insurance.update');
 
@@ -749,6 +750,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     // ── FIXED ASSETS ──────────────────────────────────────────────────────────
     Route::prefix('fixed-assets')->name('fixed-assets.')->group(function () {
         Route::get('/', [FixedAssetController::class, 'index'])->name('index');
+        Route::get('/dashboard', [FixedAssetController::class, 'dashboard'])->name('dashboard');
         Route::get('/create', [FixedAssetController::class, 'create'])->name('create');
         Route::post('/', [FixedAssetController::class, 'store'])->name('store');
         Route::get('/{fixedAsset}', [FixedAssetController::class, 'show'])->name('show');
@@ -1062,6 +1064,10 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::resource('ip-whitelist', IpWhitelistController::class)->only(['index', 'store', 'destroy']);
     Route::patch('ip-whitelist/{id}/toggle', [IpWhitelistController::class, 'toggle'])->name('ip-whitelist.toggle');
 
+    // ── SECTION DASHBOARDS ────────────────────────────────────────────────────
+    Route::get('cooperative/dashboard', [\App\Http\Controllers\Cooperative\CooperativeDashboardController::class, 'index'])->name('cooperative.dashboard');
+    Route::get('banking-products/dashboard', [\App\Http\Controllers\BankingProductsDashboardController::class, 'index'])->name('banking-products.dashboard');
+
     // ── COOPERATIVE SHARES ────────────────────────────────────────────────────
     Route::prefix('cooperative/shares')->name('cooperative.shares.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Cooperative\ShareController::class, 'index'])->name('index');
@@ -1192,6 +1198,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     // ── PROJECT MANAGEMENT ──────────────────────────────────────────────────────
     Route::prefix('projects')->name('projects.')->group(function () {
         Route::get('/', [App\Http\Controllers\ProjectController::class, 'index'])->name('index');
+        Route::get('/dashboard', [App\Http\Controllers\ProjectController::class, 'dashboard'])->name('dashboard');
         Route::get('/my-tasks', [App\Http\Controllers\ProjectController::class, 'myTasks'])->name('my-tasks');
         Route::get('/create', [App\Http\Controllers\ProjectController::class, 'create'])->name('create');
         Route::post('/', [App\Http\Controllers\ProjectController::class, 'store'])->name('store');

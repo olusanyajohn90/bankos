@@ -20,6 +20,75 @@ use Illuminate\Support\Str;
 
 class ProjectController extends Controller
 {
+    // ── Dashboard ──────────────────────────────────────────────────────────────
+
+    public function dashboard()
+    {
+        $tenantId = auth()->user()->tenant_id;
+
+        $activeProjects  = PmProject::where('tenant_id', $tenantId)->where('status', 'active')->count();
+        $totalProjects   = PmProject::where('tenant_id', $tenantId)->count();
+        $totalTasks      = PmTask::whereHas('project', fn($q) => $q->where('tenant_id', $tenantId))->count();
+        $completedTasks  = PmTask::whereHas('project', fn($q) => $q->where('tenant_id', $tenantId))->whereNotNull('completed_at')->count();
+        $overdueTasks    = PmTask::whereHas('project', fn($q) => $q->where('tenant_id', $tenantId))
+            ->whereNull('completed_at')
+            ->whereNotNull('due_date')
+            ->where('due_date', '<', now())
+            ->count();
+
+        // Tasks by status for pie chart
+        $tasksByStatus = PmTask::whereHas('project', fn($q) => $q->where('tenant_id', $tenantId))
+            ->select('status', DB::raw('COUNT(*) as count'))
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
+
+        // Team workload: tasks per member (bar chart)
+        $workload = PmTask::whereHas('project', fn($q) => $q->where('tenant_id', $tenantId))
+            ->whereNotNull('assignee_id')
+            ->whereNull('completed_at')
+            ->select('assignee_id', DB::raw('COUNT(*) as count'))
+            ->groupBy('assignee_id')
+            ->with('assignee')
+            ->orderByDesc('count')
+            ->limit(10)
+            ->get()
+            ->map(fn($r) => ['name' => optional($r->assignee)->name ?? 'Unknown', 'count' => $r->count]);
+
+        // Sprint progress
+        $activeSprint = PmSprint::whereHas('project', fn($q) => $q->where('tenant_id', $tenantId)->where('status', 'active'))
+            ->where('status', 'active')
+            ->first();
+        $sprintProgress = null;
+        if ($activeSprint) {
+            $sprintTotal = PmTask::where('sprint_id', $activeSprint->id)->count();
+            $sprintDone  = PmTask::where('sprint_id', $activeSprint->id)->whereNotNull('completed_at')->count();
+            $sprintProgress = [
+                'name'     => $activeSprint->name,
+                'total'    => $sprintTotal,
+                'done'     => $sprintDone,
+                'percent'  => $sprintTotal > 0 ? round(($sprintDone / $sprintTotal) * 100) : 0,
+                'end_date' => $activeSprint->end_date,
+            ];
+        }
+
+        // Recent activity
+        $recentActivity = DB::table('pm_task_activities')
+            ->join('users', 'pm_task_activities.user_id', '=', 'users.id')
+            ->join('pm_tasks', 'pm_task_activities.task_id', '=', 'pm_tasks.id')
+            ->join('pm_projects', 'pm_tasks.project_id', '=', 'pm_projects.id')
+            ->where('pm_projects.tenant_id', $tenantId)
+            ->select('pm_task_activities.*', 'users.name as user_name', 'pm_tasks.title as task_title', 'pm_projects.code as project_code')
+            ->orderByDesc('pm_task_activities.created_at')
+            ->limit(10)
+            ->get();
+
+        return view('projects.dashboard', compact(
+            'activeProjects', 'totalProjects', 'totalTasks', 'completedTasks', 'overdueTasks',
+            'tasksByStatus', 'workload', 'sprintProgress', 'recentActivity'
+        ));
+    }
+
     // ── Project CRUD ────────────────────────────────────────────────────────────
 
     public function index(Request $request)

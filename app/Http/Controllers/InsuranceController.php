@@ -5,11 +5,59 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\InsurancePolicy;
 use App\Models\Loan;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class InsuranceController extends Controller
 {
+    public function dashboard()
+    {
+        $tenantId = auth()->user()->tenant_id;
+
+        $totalPolicies  = InsurancePolicy::where('tenant_id', $tenantId)->count();
+        $activePolicies = InsurancePolicy::where('tenant_id', $tenantId)->where('status', 'active')->count();
+        $totalPremiums  = InsurancePolicy::where('tenant_id', $tenantId)->where('status', 'active')->sum('premium');
+        $totalCoverage  = InsurancePolicy::where('tenant_id', $tenantId)->where('status', 'active')->sum('sum_assured');
+
+        // Policies by type (pie)
+        $byType = InsurancePolicy::where('tenant_id', $tenantId)
+            ->select('product', DB::raw('COUNT(*) as count'))
+            ->groupBy('product')
+            ->pluck('count', 'product')
+            ->toArray();
+
+        // Policies by provider (bar)
+        $byProvider = InsurancePolicy::where('tenant_id', $tenantId)
+            ->select('provider', DB::raw('COUNT(*) as count'))
+            ->groupBy('provider')
+            ->orderByDesc('count')
+            ->limit(8)
+            ->pluck('count', 'provider')
+            ->toArray();
+
+        // Expiring soon (next 30 days)
+        $expiringSoon = InsurancePolicy::where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->whereBetween('end_date', [Carbon::today(), Carbon::today()->addDays(30)])
+            ->count();
+
+        // Claims count
+        $claimsCount = InsurancePolicy::where('tenant_id', $tenantId)
+            ->where('status', 'claimed')
+            ->count();
+
+        $lapsedCount = InsurancePolicy::where('tenant_id', $tenantId)
+            ->where('status', 'lapsed')
+            ->count();
+
+        return view('insurance.dashboard', compact(
+            'totalPolicies', 'activePolicies', 'totalPremiums', 'totalCoverage',
+            'byType', 'byProvider', 'expiringSoon', 'claimsCount', 'lapsedCount'
+        ));
+    }
+
     public function index(Request $request)
     {
         $policies = InsurancePolicy::with(['customer', 'loan'])
