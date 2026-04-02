@@ -1188,6 +1188,48 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::get('/customer/{customer}', [\App\Http\Controllers\CortexController::class, 'customerInsight'])->name('customer');
         Route::post('/batch-analysis', [\App\Http\Controllers\CortexController::class, 'batchAnalysis'])->name('batch-analysis');
     });
+
+    // ── PROJECT MANAGEMENT ──────────────────────────────────────────────────────
+    Route::prefix('projects')->name('projects.')->group(function () {
+        Route::get('/', [App\Http\Controllers\ProjectController::class, 'index'])->name('index');
+        Route::get('/my-tasks', [App\Http\Controllers\ProjectController::class, 'myTasks'])->name('my-tasks');
+        Route::get('/create', [App\Http\Controllers\ProjectController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\ProjectController::class, 'store'])->name('store');
+        Route::get('/{project}', [App\Http\Controllers\ProjectController::class, 'show'])->name('show');
+        Route::patch('/{project}', [App\Http\Controllers\ProjectController::class, 'update'])->name('update');
+        Route::delete('/{project}', [App\Http\Controllers\ProjectController::class, 'destroy'])->name('destroy');
+
+        // Board
+        Route::get('/{project}/board', [App\Http\Controllers\ProjectController::class, 'board'])->name('board');
+        Route::post('/tasks/move', [App\Http\Controllers\ProjectController::class, 'moveTask'])->name('tasks.move');
+        Route::post('/{project}/columns', [App\Http\Controllers\ProjectController::class, 'addColumn'])->name('columns.add');
+        Route::patch('/columns/{column}', [App\Http\Controllers\ProjectController::class, 'updateColumn'])->name('columns.update');
+        Route::delete('/columns/{column}', [App\Http\Controllers\ProjectController::class, 'deleteColumn'])->name('columns.delete');
+
+        // Tasks
+        Route::post('/{project}/tasks', [App\Http\Controllers\ProjectController::class, 'createTask'])->name('tasks.create');
+        Route::get('/tasks/{task}', [App\Http\Controllers\ProjectController::class, 'showTask'])->name('tasks.show');
+        Route::patch('/tasks/{task}', [App\Http\Controllers\ProjectController::class, 'updateTask'])->name('tasks.update');
+        Route::delete('/tasks/{task}', [App\Http\Controllers\ProjectController::class, 'deleteTask'])->name('tasks.delete');
+        Route::post('/tasks/{task}/comments', [App\Http\Controllers\ProjectController::class, 'addComment'])->name('tasks.comments');
+        Route::post('/tasks/{task}/attachments', [App\Http\Controllers\ProjectController::class, 'addAttachment'])->name('tasks.attachments');
+        Route::post('/tasks/{task}/time', [App\Http\Controllers\ProjectController::class, 'logTime'])->name('tasks.time');
+
+        // Members
+        Route::get('/{project}/members', [App\Http\Controllers\ProjectController::class, 'members'])->name('members');
+        Route::post('/{project}/members', [App\Http\Controllers\ProjectController::class, 'addMember'])->name('members.add');
+        Route::delete('/{project}/members/{user}', [App\Http\Controllers\ProjectController::class, 'removeMember'])->name('members.remove');
+
+        // Sprints
+        Route::get('/{project}/sprints', [App\Http\Controllers\ProjectController::class, 'sprints'])->name('sprints');
+        Route::post('/{project}/sprints', [App\Http\Controllers\ProjectController::class, 'createSprint'])->name('sprints.create');
+        Route::patch('/sprints/{sprint}/start', [App\Http\Controllers\ProjectController::class, 'startSprint'])->name('sprints.start');
+        Route::patch('/sprints/{sprint}/complete', [App\Http\Controllers\ProjectController::class, 'completeSprint'])->name('sprints.complete');
+
+        // Labels
+        Route::get('/{project}/labels', [App\Http\Controllers\ProjectController::class, 'labels'])->name('labels');
+        Route::post('/{project}/labels', [App\Http\Controllers\ProjectController::class, 'createLabel'])->name('labels.create');
+    });
 });
 
 // ── SUPER ADMIN — Platform Control Tower ─────────────────────────────────────
