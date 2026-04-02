@@ -85,6 +85,11 @@ use App\Http\Controllers\Support\SupportDashboardController;
 use App\Http\Controllers\Support\SupportTicketController;
 use App\Http\Controllers\Support\SupportTeamController;
 use App\Http\Controllers\Visitor\VisitorController;
+use App\Http\Controllers\CreditDashboardController;
+use App\Http\Controllers\CustomerDashboardController;
+use App\Http\Controllers\AccountDashboardController;
+use App\Http\Controllers\TransactionDashboardController;
+use App\Http\Controllers\OperationsDashboardController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -126,6 +131,13 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // ── Analytics Dashboards ─────────────────────────────────────────────────
+    Route::get('/credit/dashboard', [CreditDashboardController::class, 'index'])->name('credit.dashboard');
+    Route::get('/customers/dashboard', [CustomerDashboardController::class, 'index'])->name('customers.dashboard');
+    Route::get('/accounts/dashboard', [AccountDashboardController::class, 'index'])->name('accounts.dashboard');
+    Route::get('/transactions/dashboard', [TransactionDashboardController::class, 'index'])->name('transactions.dashboard');
+    Route::get('/operations/dashboard', [OperationsDashboardController::class, 'index'])->name('operations.dashboard');
 
     // Operations & Administration - Workflows
     Route::get('/workflows', [\App\Http\Controllers\WorkflowController::class, 'index'])->name('workflows.index');

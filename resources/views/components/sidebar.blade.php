@@ -45,7 +45,7 @@
         <div class="border-t border-bankos-border dark:border-bankos-dark-border my-1"></div>
 
         {{-- ── CREDIT & LENDING ─────────────────────────────────── --}}
-        <div x-data="{ open: {{ request()->routeIs('loans.*','loan-applications.*','groups.*','centres.*','credit.policies.*','par-dashboard.*','ecl.*','bureau.*') ? 'true' : 'false' }} }">
+        <div x-data="{ open: {{ request()->routeIs('loans.*','loan-applications.*','groups.*','centres.*','credit.policies.*','par-dashboard.*','ecl.*','bureau.*','credit.dashboard') ? 'true' : 'false' }} }">
             <button @click="open = !open" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg">
                 <span class="flex items-center gap-3">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
@@ -54,6 +54,9 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200" :class="open ? 'rotate-180' : ''"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </button>
             <div x-show="open" x-transition class="mt-1 space-y-0.5 ml-6 pl-3 border-l border-bankos-border dark:border-bankos-dark-border">
+                <a href="{{ route('credit.dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('credit.dashboard') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Dashboard</span>
+                </a>
                 @can('loans.view')
                 <a href="{{ route('loans.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('loans.*') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
                     <span>Loans</span>
@@ -162,7 +165,7 @@
         <div class="border-t border-bankos-border dark:border-bankos-dark-border my-1"></div>
 
         {{-- ── OPERATIONS & ANALYTICS ───────────────────────────── --}}
-        <div x-data="{ open: {{ request()->routeIs('teller.*','nip.*','mandates.*','collections.*','inbound-transfers.*','posting-files.*','agents.*','insurance.*','reports.*','custom-reports.*','board-pack.*','portal-analytics.*') ? 'true' : 'false' }} }">
+        <div x-data="{ open: {{ request()->routeIs('teller.*','nip.*','mandates.*','collections.*','inbound-transfers.*','posting-files.*','agents.*','insurance.*','reports.*','custom-reports.*','board-pack.*','portal-analytics.*','operations.dashboard','transactions.dashboard','accounts.dashboard','customers.dashboard') ? 'true' : 'false' }} }">
             <button @click="open = !open" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg">
                 <span class="flex items-center gap-3">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
@@ -171,6 +174,20 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200" :class="open ? 'rotate-180' : ''"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </button>
             <div x-show="open" x-transition class="mt-1 space-y-0.5 ml-6 pl-3 border-l border-bankos-border dark:border-bankos-dark-border">
+                <p class="px-3 pt-2 pb-1 text-xs font-semibold text-bankos-muted/70 uppercase tracking-wider">Dashboards</p>
+                <a href="{{ route('operations.dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('operations.dashboard') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Operations Dashboard</span>
+                </a>
+                <a href="{{ route('customers.dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('customers.dashboard') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Customers Analytics</span>
+                </a>
+                <a href="{{ route('accounts.dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('accounts.dashboard') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Accounts Analytics</span>
+                </a>
+                <a href="{{ route('transactions.dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('transactions.dashboard') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Transactions Analytics</span>
+                </a>
+                <p class="px-3 pt-2 pb-1 text-xs font-semibold text-bankos-muted/70 uppercase tracking-wider">Operations</p>
                 <a href="{{ route('teller.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('teller.*') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
                     <span>Teller</span>
                 </a>

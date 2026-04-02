@@ -13,7 +13,7 @@
             <div class="flex items-center gap-2">
                 <span class="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full {{ empty(config('services.anthropic.api_key')) ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' }}">
                     <span class="w-2 h-2 rounded-full {{ empty(config('services.anthropic.api_key')) ? 'bg-amber-500' : 'bg-green-500' }} animate-pulse"></span>
-                    {{ empty(config('services.anthropic.api_key')) ? 'Rule-Based Mode' : 'Claude AI Active' }}
+                    {{ empty(config('services.anthropic.api_key')) ? 'Cortex Standard' : 'Cortex AI Active' }}
                 </span>
             </div>
         </div>
