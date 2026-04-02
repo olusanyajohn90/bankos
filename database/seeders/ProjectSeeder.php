@@ -97,13 +97,11 @@ class ProjectSeeder extends Seeder
             foreach ($labelDefs as $lbl) {
                 $lid = Str::uuid()->toString();
                 $projectLabels[$lbl['name']] = $lid;
-                DB::table('pm_labels')->insert([
+                DB::table('pm_labels')->insertOrIgnore([
                     'id'         => $lid,
                     'project_id' => $proj['id'],
                     'name'       => $lbl['name'],
                     'color'      => $lbl['color'],
-                    'created_at' => $now,
-                    'updated_at' => $now,
                 ]);
             }
             $labelsByProject[$proj['id']] = $projectLabels;
@@ -197,13 +195,13 @@ class ProjectSeeder extends Seeder
         $taskDefs = [
             // Core Banking Platform v2
             ['project' => 0, 'col' => 'Done', 'title' => 'Set up CI/CD pipeline for v2 branch', 'priority' => 'high', 'sp' => 5, 'labels' => ['Feature'], 'completed' => true],
-            ['project' => 0, 'col' => 'Done', 'title' => 'Design new database schema for multi-currency', 'priority' => 'critical', 'sp' => 8, 'labels' => ['Feature','Design'], 'completed' => true],
-            ['project' => 0, 'col' => 'Done', 'title' => 'Implement real-time transaction settlement engine', 'priority' => 'critical', 'sp' => 13, 'labels' => ['Feature'], 'completed' => true],
+            ['project' => 0, 'col' => 'Done', 'title' => 'Design new database schema for multi-currency', 'priority' => 'urgent', 'sp' => 8, 'labels' => ['Feature','Design'], 'completed' => true],
+            ['project' => 0, 'col' => 'Done', 'title' => 'Implement real-time transaction settlement engine', 'priority' => 'urgent', 'sp' => 13, 'labels' => ['Feature'], 'completed' => true],
             ['project' => 0, 'col' => 'Review', 'title' => 'API gateway migration to new auth system', 'priority' => 'high', 'sp' => 8, 'labels' => ['Feature']],
             ['project' => 0, 'col' => 'Review', 'title' => 'Write integration tests for settlement module', 'priority' => 'medium', 'sp' => 5, 'labels' => ['Enhancement']],
             ['project' => 0, 'col' => 'In Progress', 'title' => 'Implement NIBSS NIP 2.0 adapter', 'priority' => 'high', 'sp' => 8, 'labels' => ['Feature']],
             ['project' => 0, 'col' => 'In Progress', 'title' => 'Build currency conversion rate engine', 'priority' => 'medium', 'sp' => 5, 'labels' => ['Feature']],
-            ['project' => 0, 'col' => 'To Do', 'title' => 'Fix rounding errors in interest calculation', 'priority' => 'critical', 'sp' => 3, 'labels' => ['Bug','Urgent']],
+            ['project' => 0, 'col' => 'To Do', 'title' => 'Fix rounding errors in interest calculation', 'priority' => 'urgent', 'sp' => 3, 'labels' => ['Bug','Urgent']],
             ['project' => 0, 'col' => 'To Do', 'title' => 'API documentation for external partners', 'priority' => 'low', 'sp' => 3, 'labels' => ['Documentation']],
             ['project' => 0, 'col' => 'To Do', 'title' => 'Performance load testing for 10k TPS', 'priority' => 'high', 'sp' => 5, 'labels' => ['Enhancement']],
 
@@ -213,17 +211,17 @@ class ProjectSeeder extends Seeder
             ['project' => 1, 'col' => 'Review', 'title' => 'Network infrastructure design for Abuja branch', 'priority' => 'medium', 'sp' => 5, 'labels' => ['Design']],
             ['project' => 1, 'col' => 'In Progress', 'title' => 'Staff recruitment for Port Harcourt branch', 'priority' => 'high', 'sp' => 5, 'labels' => ['Feature']],
             ['project' => 1, 'col' => 'In Progress', 'title' => 'Interior design approval for all branches', 'priority' => 'medium', 'sp' => 3, 'labels' => ['Design']],
-            ['project' => 1, 'col' => 'To Do', 'title' => 'CBN licensing application for new branches', 'priority' => 'critical', 'sp' => 8, 'labels' => ['Feature','Urgent']],
+            ['project' => 1, 'col' => 'To Do', 'title' => 'CBN licensing application for new branches', 'priority' => 'urgent', 'sp' => 8, 'labels' => ['Feature','Urgent']],
             ['project' => 1, 'col' => 'To Do', 'title' => 'Digital signage setup and branding materials', 'priority' => 'low', 'sp' => 2, 'labels' => ['Design']],
             ['project' => 1, 'col' => 'To Do', 'title' => 'Training program for new branch staff', 'priority' => 'medium', 'sp' => 5, 'labels' => ['Documentation']],
 
             // Digital Lending Launch
-            ['project' => 2, 'col' => 'Done', 'title' => 'Define loan product parameters and interest tiers', 'priority' => 'critical', 'sp' => 5, 'labels' => ['Feature'], 'completed' => true],
+            ['project' => 2, 'col' => 'Done', 'title' => 'Define loan product parameters and interest tiers', 'priority' => 'urgent', 'sp' => 5, 'labels' => ['Feature'], 'completed' => true],
             ['project' => 2, 'col' => 'Review', 'title' => 'AI credit scoring model v1 training complete', 'priority' => 'high', 'sp' => 13, 'labels' => ['Feature']],
             ['project' => 2, 'col' => 'In Progress', 'title' => 'Build e-mandate integration with NIBSS', 'priority' => 'high', 'sp' => 8, 'labels' => ['Feature']],
             ['project' => 2, 'col' => 'In Progress', 'title' => 'Mobile app UI for loan application flow', 'priority' => 'medium', 'sp' => 8, 'labels' => ['Design','Feature']],
             ['project' => 2, 'col' => 'In Progress', 'title' => 'Automated disbursement via NIP', 'priority' => 'high', 'sp' => 5, 'labels' => ['Feature']],
-            ['project' => 2, 'col' => 'To Do', 'title' => 'Bug: OTP not delivered for loan verification', 'priority' => 'critical', 'sp' => 2, 'labels' => ['Bug','Urgent']],
+            ['project' => 2, 'col' => 'To Do', 'title' => 'Bug: OTP not delivered for loan verification', 'priority' => 'urgent', 'sp' => 2, 'labels' => ['Bug','Urgent']],
             ['project' => 2, 'col' => 'To Do', 'title' => 'Regulatory compliance review for digital lending', 'priority' => 'high', 'sp' => 5, 'labels' => ['Documentation']],
             ['project' => 2, 'col' => 'To Do', 'title' => 'Build repayment reminder notification system', 'priority' => 'medium', 'sp' => 3, 'labels' => ['Enhancement']],
             ['project' => 2, 'col' => 'To Do', 'title' => 'Stress test lending engine with 50k concurrent applications', 'priority' => 'medium', 'sp' => 5, 'labels' => ['Enhancement']],
@@ -253,7 +251,7 @@ class ProjectSeeder extends Seeder
                 'title'           => $td['title'],
                 'description'     => null,
                 'priority'        => $td['priority'],
-                'status'          => isset($td['completed']) ? 'done' : ($td['col'] === 'In Progress' ? 'in_progress' : ($td['col'] === 'Review' ? 'review' : 'open')),
+                'status'          => isset($td['completed']) ? 'done' : ($td['col'] === 'In Progress' ? 'in_progress' : ($td['col'] === 'Review' ? 'review' : 'todo')),
                 'assignee_id'     => $assignee,
                 'reporter_id'     => $ownerId,
                 'due_date'        => $dueDate,
