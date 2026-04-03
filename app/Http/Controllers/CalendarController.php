@@ -71,14 +71,15 @@ class CalendarController extends Controller
         // Pull in leave requests (if table exists)
         $leaves = collect();
         try {
-            if (Schema::hasTable('leave_requests') && Schema::hasColumn('leave_requests', 'user_id')) {
+            if (Schema::hasTable('leave_requests') && Schema::hasTable('staff_profiles')) {
                 $leaves = DB::table('leave_requests')
-                    ->join('users', 'leave_requests.user_id', '=', 'users.id')
-                    ->where('users.tenant_id', $tenantId)
+                    ->join('staff_profiles', 'leave_requests.staff_profile_id', '=', 'staff_profiles.id')
+                    ->join('users', 'staff_profiles.user_id', '=', 'users.id')
+                    ->where('leave_requests.tenant_id', $tenantId)
                     ->where('leave_requests.status', 'approved')
                     ->where(function ($q) use ($startDate, $endDate) {
-                        $q->whereBetween('start_date', [$startDate, $endDate])
-                          ->orWhereBetween('end_date', [$startDate, $endDate]);
+                        $q->whereBetween('leave_requests.start_date', [$startDate, $endDate])
+                          ->orWhereBetween('leave_requests.end_date', [$startDate, $endDate]);
                     })
                     ->select('leave_requests.*', 'users.name as user_name')
                     ->get();

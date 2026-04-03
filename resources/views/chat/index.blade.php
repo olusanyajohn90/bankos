@@ -4619,5 +4619,5 @@ function chatApp() {
 </script>
 
 {{-- LiveKit JS SDK --}}
-<script src="https://cdn.jsdelivr.net/npm/livekit-client@2.9.1/dist/livekit-client.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2.6.1/dist/livekit-client.umd.min.js"></script>
 @endpush
