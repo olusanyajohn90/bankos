@@ -65,8 +65,71 @@ class VisitorController extends Controller
         $users  = User::where('tenant_id', $tenantId)->orderBy('name')->get();
         $rooms  = VisitorMeetingRoom::where('tenant_id', $tenantId)->get();
 
+        // ── Enhanced: Visitor Trend (last 30 days) ──
+        try {
+            $visitorTrend = VisitorVisit::where('tenant_id', $tenantId)
+                ->whereDate('checked_in_at', '>=', now()->subDays(30))
+                ->select(\Illuminate\Support\Facades\DB::raw("DATE(checked_in_at) as date"), \Illuminate\Support\Facades\DB::raw("count(*) as total"))
+                ->groupBy(\Illuminate\Support\Facades\DB::raw("DATE(checked_in_at)"))
+                ->orderBy('date')
+                ->get();
+
+            // ── Enhanced: Visit Purpose Breakdown ──
+            $purposeBreakdown = VisitorVisit::where('tenant_id', $tenantId)
+                ->whereNotNull('purpose')
+                ->whereDate('checked_in_at', '>=', now()->subDays(30))
+                ->select('purpose', \Illuminate\Support\Facades\DB::raw("count(*) as total"))
+                ->groupBy('purpose')
+                ->orderByDesc('total')
+                ->limit(10)
+                ->pluck('total', 'purpose');
+
+            // ── Enhanced: Peak Visiting Hours ──
+            $peakHours = VisitorVisit::where('tenant_id', $tenantId)
+                ->whereNotNull('checked_in_at')
+                ->whereDate('checked_in_at', '>=', now()->subDays(30))
+                ->select(\Illuminate\Support\Facades\DB::raw("EXTRACT(HOUR FROM checked_in_at) as hour"), \Illuminate\Support\Facades\DB::raw("count(*) as total"))
+                ->groupBy(\Illuminate\Support\Facades\DB::raw("EXTRACT(HOUR FROM checked_in_at)"))
+                ->orderBy('hour')
+                ->pluck('total', 'hour');
+
+            // ── Enhanced: Repeat Visitors ──
+            $repeatVisitors = Visitor::where('tenant_id', $tenantId)
+                ->whereHas('visits', function ($q) {
+                    $q->havingRaw('count(*) > 1');
+                }, '>=', 2)
+                ->count();
+
+            // Simple fallback for repeat visitor count
+            $repeatVisitors = \Illuminate\Support\Facades\DB::table('visitor_visits')
+                ->where('tenant_id', $tenantId)
+                ->select('visitor_id', \Illuminate\Support\Facades\DB::raw('count(*) as visit_count'))
+                ->groupBy('visitor_id')
+                ->havingRaw('count(*) > 1')
+                ->get()
+                ->count();
+
+            // ── Enhanced: Watchlist Alerts ──
+            $watchlistAlerts = VisitorWatchlist::where('tenant_id', $tenantId)
+                ->where('status', 'blacklisted')
+                ->count();
+
+            $vipCount = VisitorWatchlist::where('tenant_id', $tenantId)
+                ->where('status', 'vip')
+                ->count();
+
+        } catch (\Exception $e) {
+            $visitorTrend = collect();
+            $purposeBreakdown = collect();
+            $peakHours = collect();
+            $repeatVisitors = 0;
+            $watchlistAlerts = 0;
+            $vipCount = 0;
+        }
+
         return view('visitor.dashboard', compact(
-            'stats', 'currentVisitors', 'expectedToday', 'meetingsToday', 'recentVisits', 'users', 'rooms'
+            'stats', 'currentVisitors', 'expectedToday', 'meetingsToday', 'recentVisits', 'users', 'rooms',
+            'visitorTrend', 'purposeBreakdown', 'peakHours', 'repeatVisitors', 'watchlistAlerts', 'vipCount'
         ));
     }
 

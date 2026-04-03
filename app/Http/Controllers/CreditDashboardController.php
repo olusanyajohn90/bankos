@@ -16,116 +16,140 @@ class CreditDashboardController extends Controller
         $endDate   = $request->input('end_date', now()->format('Y-m-d'));
 
         try {
-            // ── KPI: Total Loan Portfolio ──
+            // Helper: apply date filter on disbursed_at when user provides dates
+            $applyDateFilter = function ($query, $column = 'disbursed_at') use ($startDate, $endDate) {
+                return $query->whereRaw("$column >= ?", [$startDate])
+                             ->whereRaw("$column <= ?", [$endDate]);
+            };
+
+            // -- KPI: Total Loan Portfolio --
             $totalPortfolio = DB::table('loans')
                 ->where('tenant_id', $tenantId)
                 ->whereIn('status', ['active', 'overdue'])
+                ->when($startDate && $endDate, fn($q) => $applyDateFilter($q))
                 ->sum('outstanding_balance');
 
-            // ── KPI: Total Active Loans Count ──
+            // -- KPI: Total Active Loans Count --
             $activeLoansCount = DB::table('loans')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'active')
+                ->when($startDate && $endDate, fn($q) => $applyDateFilter($q))
                 ->count();
 
-            // ── KPI: Overdue Loans Count ──
+            // -- KPI: Overdue Loans Count --
             $overdueLoansCount = DB::table('loans')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'overdue')
+                ->when($startDate && $endDate, fn($q) => $applyDateFilter($q))
                 ->count();
 
-            // ── KPI: Average Loan Size ──
+            // -- KPI: Average Loan Size --
             $avgLoanSize = DB::table('loans')
                 ->where('tenant_id', $tenantId)
                 ->whereIn('status', ['active', 'overdue', 'closed'])
+                ->when($startDate && $endDate, fn($q) => $applyDateFilter($q))
                 ->avg('principal_amount') ?? 0;
 
-            // ── KPI: Total Disbursements This Month ──
+            // -- KPI: Total Disbursements (filtered period) --
             $disbursementsThisMonth = DB::table('loans')
                 ->where('tenant_id', $tenantId)
                 ->whereNotNull('disbursed_at')
-                ->whereRaw("disbursed_at >= ?", [Carbon::now()->startOfMonth()])
-                ->whereRaw("disbursed_at <= ?", [Carbon::now()->endOfMonth()])
+                ->whereRaw("disbursed_at >= ?", [$startDate])
+                ->whereRaw("disbursed_at <= ?", [$endDate])
                 ->sum('principal_amount');
 
-            // ── KPI: Repayment Collection Rate (this month) ──
+            // -- KPI: Repayment Collection Rate (filtered period) --
             $expectedRepayments = DB::table('transactions')
                 ->join('accounts', 'transactions.account_id', '=', 'accounts.id')
                 ->join('loans', 'accounts.id', '=', 'loans.account_id')
                 ->where('transactions.tenant_id', $tenantId)
                 ->where('transactions.type', 'repayment')
                 ->where('transactions.status', 'success')
-                ->whereRaw("transactions.created_at >= ?", [Carbon::now()->startOfMonth()])
+                ->whereRaw("transactions.created_at >= ?", [$startDate])
+                ->whereRaw("transactions.created_at <= ?", [$endDate])
                 ->sum('transactions.amount');
 
             $totalDueThisMonth = DB::table('loans')
                 ->where('tenant_id', $tenantId)
                 ->whereIn('status', ['active', 'overdue'])
+                ->when($startDate && $endDate, fn($q) => $applyDateFilter($q))
                 ->sum('outstanding_balance');
 
             $collectionRate = $totalDueThisMonth > 0
                 ? round(($expectedRepayments / $totalDueThisMonth) * 100, 1) : 0;
 
-            // ── KPI: NPL Ratio ──
+            // -- KPI: NPL Ratio --
             $nplBalance = DB::table('loans')
                 ->where('tenant_id', $tenantId)
                 ->whereIn('status', ['overdue', 'written_off'])
+                ->when($startDate && $endDate, fn($q) => $applyDateFilter($q))
                 ->sum('outstanding_balance');
             $nplRatio = $totalPortfolio > 0
                 ? round(($nplBalance / $totalPortfolio) * 100, 2) : 0;
 
-            // ── KPI: Total Borrowers ──
+            // -- KPI: Total Borrowers --
             $totalBorrowers = DB::table('loans')
                 ->where('tenant_id', $tenantId)
                 ->whereIn('status', ['active', 'overdue'])
+                ->when($startDate && $endDate, fn($q) => $applyDateFilter($q))
                 ->distinct('customer_id')
                 ->count('customer_id');
 
-            // ── KPI: Loan Applications Pipeline ──
+            // -- KPI: Loan Applications Pipeline --
             $pendingApps = DB::table('loans')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'pending')
+                ->whereRaw("created_at >= ?", [$startDate])
+                ->whereRaw("created_at <= ?", [$endDate])
                 ->count();
             $approvedApps = DB::table('loans')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'approved')
+                ->whereRaw("created_at >= ?", [$startDate])
+                ->whereRaw("created_at <= ?", [$endDate])
                 ->count();
             $rejectedApps = DB::table('loans')
                 ->where('tenant_id', $tenantId)
                 ->whereNotNull('rejected_at')
+                ->whereRaw("rejected_at >= ?", [$startDate])
+                ->whereRaw("rejected_at <= ?", [$endDate])
                 ->count();
 
-            // ── KPI: IFRS9 Staging Breakdown ──
+            // -- KPI: IFRS9 Staging Breakdown --
             $ifrs9Stages = DB::table('loans')
                 ->select('ifrs9_stage', DB::raw('COUNT(*) as count'), DB::raw('COALESCE(SUM(outstanding_balance),0) as total'))
                 ->where('tenant_id', $tenantId)
                 ->whereIn('status', ['active', 'overdue'])
+                ->when($startDate && $endDate, fn($q) => $applyDateFilter($q))
                 ->groupBy('ifrs9_stage')
                 ->get()
                 ->keyBy('ifrs9_stage');
 
-            // ── KPI: Total ECL Provision ──
+            // -- KPI: Total ECL Provision --
             $totalEclProvision = DB::table('loans')
                 ->where('tenant_id', $tenantId)
                 ->whereIn('status', ['active', 'overdue'])
+                ->when($startDate && $endDate, fn($q) => $applyDateFilter($q))
                 ->sum('ecl_provision');
 
-            // ── CHART: Loans by Status (pie) ──
+            // -- CHART: Loans by Status (pie) --
             $loansByStatus = DB::table('loans')
                 ->select('status', DB::raw('COUNT(*) as count'))
                 ->where('tenant_id', $tenantId)
+                ->when($startDate && $endDate, fn($q) => $applyDateFilter($q))
                 ->groupBy('status')
                 ->pluck('count', 'status');
 
-            // ── CHART: Loans by Product (bar) ──
+            // -- CHART: Loans by Product (bar) --
             $loansByProduct = DB::table('loans')
                 ->join('loan_products', 'loans.product_id', '=', 'loan_products.id')
                 ->select('loan_products.name', DB::raw('COUNT(*) as count'))
                 ->where('loans.tenant_id', $tenantId)
+                ->when($startDate && $endDate, fn($q) => $applyDateFilter($q, 'loans.disbursed_at'))
                 ->groupBy('loan_products.name')
                 ->pluck('count', 'name');
 
-            // ── CHART: Disbursement Trend (last 12 months) ──
+            // -- CHART: Disbursement Trend (filtered period) --
             $disbursementTrend = DB::table('loans')
                 ->select(
                     DB::raw("TO_CHAR(disbursed_at, 'YYYY-MM') as month"),
@@ -133,13 +157,13 @@ class CreditDashboardController extends Controller
                 )
                 ->where('tenant_id', $tenantId)
                 ->whereNotNull('disbursed_at')
-                ->whereRaw("disbursed_at >= ?", [Carbon::now()->subMonths(12)->startOfMonth()])
+                ->whereRaw("disbursed_at >= ?", [$startDate])
+                ->whereRaw("disbursed_at <= ?", [$endDate])
                 ->groupBy(DB::raw("TO_CHAR(disbursed_at, 'YYYY-MM')"))
                 ->orderBy('month')
                 ->pluck('total', 'month');
 
-            // ── CHART: PAR Analysis (DPD Buckets) ──
-            // We use loans with overdue status and calculate approximate DPD from expected_maturity_date
+            // -- CHART: PAR Analysis (DPD Buckets) --
             $parBuckets = [
                 '1-30'  => 0,
                 '31-60' => 0,
@@ -151,6 +175,7 @@ class CreditDashboardController extends Controller
                 ->select('outstanding_balance', 'expected_maturity_date', 'disbursed_at', 'tenure_days', 'principal_amount')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'overdue')
+                ->when($startDate && $endDate, fn($q) => $applyDateFilter($q))
                 ->get();
 
             foreach ($overdueLoans as $loan) {
@@ -168,7 +193,7 @@ class CreditDashboardController extends Controller
                 else $parBuckets['180+'] += $bal;
             }
 
-            // ── TABLE: Top 10 Borrowers by Outstanding Balance ──
+            // -- TABLE: Top 10 Borrowers by Outstanding Balance --
             $topBorrowers = DB::table('loans')
                 ->join('customers', 'loans.customer_id', '=', 'customers.id')
                 ->select(
@@ -180,17 +205,19 @@ class CreditDashboardController extends Controller
                 )
                 ->where('loans.tenant_id', $tenantId)
                 ->whereIn('loans.status', ['active', 'overdue'])
+                ->when($startDate && $endDate, fn($q) => $applyDateFilter($q, 'loans.disbursed_at'))
                 ->groupBy('customers.id', 'customers.first_name', 'customers.last_name', 'customers.customer_number')
                 ->orderByDesc('total_outstanding')
                 ->limit(10)
                 ->get();
 
-            // ── CHART: Loan Officer Performance ──
+            // -- CHART: Loan Officer Performance --
             $officerPerformance = DB::table('loans')
                 ->join('users', 'loans.officer_id', '=', 'users.id')
                 ->select('users.name', DB::raw('COUNT(*) as loan_count'), DB::raw('SUM(loans.principal_amount) as total_disbursed'))
                 ->where('loans.tenant_id', $tenantId)
                 ->whereIn('loans.status', ['active', 'overdue', 'closed'])
+                ->when($startDate && $endDate, fn($q) => $applyDateFilter($q, 'loans.disbursed_at'))
                 ->groupBy('users.name')
                 ->orderByDesc('loan_count')
                 ->limit(10)

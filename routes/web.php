@@ -379,6 +379,10 @@ Route::middleware(['auth', 'tenant'])->group(function () {
 
         // HR Dashboard
         Route::get('/', [\App\Http\Controllers\Hr\HrDashboardController::class, 'index'])->name('dashboard');
+        Route::get('payroll-dashboard', [\App\Http\Controllers\Hr\HrDashboardController::class, 'payrollDashboard'])->name('payroll-dashboard');
+        Route::get('leave-dashboard', [\App\Http\Controllers\Hr\HrDashboardController::class, 'leaveDashboard'])->name('leave-dashboard');
+        Route::get('staff-dashboard', [\App\Http\Controllers\Hr\HrDashboardController::class, 'staffDashboard'])->name('staff-dashboard');
+        Route::get('performance-dashboard', [\App\Http\Controllers\Hr\HrDashboardController::class, 'performanceDashboard'])->name('performance-dashboard');
 
         // Org structure (regions, divisions, departments)
         Route::get('org', [OrgController::class, 'index'])->name('org.index');
@@ -775,6 +779,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     // ── COMPLIANCE / REGULATORY REPORTS ───────────────────────────────────────
     Route::prefix('compliance')->name('compliance.')->group(function () {
         Route::get('/', [RegulatoryReportController::class, 'dashboard'])->name('dashboard');
+        Route::get('/dashboard', [\App\Http\Controllers\ComplianceDashboardController::class, 'index'])->name('enhanced-dashboard');
         Route::get('/ndic', [RegulatoryReportController::class, 'ndicDepositors'])->name('ndic');
         Route::get('/ndic/download', [RegulatoryReportController::class, 'ndicDownload'])->name('ndic.download');
         Route::get('/nfiu-ctr', [RegulatoryReportController::class, 'nfiuCtr'])->name('nfiu-ctr');
@@ -1249,6 +1254,12 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::get('/{project}/labels', [App\Http\Controllers\ProjectController::class, 'labels'])->name('labels');
         Route::post('/{project}/labels', [App\Http\Controllers\ProjectController::class, 'createLabel'])->name('labels.create');
     });
+
+    // ── WORKSPACE DASHBOARD ──────────────────────────────────────────────────
+    Route::get('/workspace/dashboard', [\App\Http\Controllers\WorkspaceDashboardController::class, 'index'])->name('workspace.dashboard');
+
+    // ── ADMIN DASHBOARD ──────────────────────────────────────────────────────
+    Route::get('/admin/dashboard', [\App\Http\Controllers\AdminDashboardController::class, 'index'])->name('admin.dashboard');
 });
 
 // ── SUPER ADMIN — Platform Control Tower ─────────────────────────────────────

@@ -19,39 +19,106 @@ class CrmController extends Controller
     {
         $tenantId = auth()->user()->tenant_id;
 
-        $stages = CrmPipelineStage::where('tenant_id', $tenantId)->orderBy('position')->get();
+        try {
+            $stages = CrmPipelineStage::where('tenant_id', $tenantId)->orderBy('position')->get();
 
-        // Pipeline summary
-        $pipelineData = [];
-        foreach ($stages as $stage) {
-            $leads = CrmLead::where('tenant_id', $tenantId)
-                ->where('stage_id', $stage->id)
-                ->where('status', 'in_progress')
+            // Pipeline summary
+            $pipelineData = [];
+            foreach ($stages as $stage) {
+                $leads = CrmLead::where('tenant_id', $tenantId)
+                    ->where('stage_id', $stage->id)
+                    ->where('status', 'in_progress')
+                    ->get();
+                $pipelineData[] = [
+                    'stage'       => $stage,
+                    'count'       => $leads->count(),
+                    'total_value' => $leads->sum('estimated_value'),
+                ];
+            }
+
+            // Stats
+            $totalLeads   = CrmLead::where('tenant_id', $tenantId)->count();
+            $activeLeads  = CrmLead::where('tenant_id', $tenantId)->whereIn('status', ['new', 'in_progress'])->count();
+            $converted    = CrmLead::where('tenant_id', $tenantId)->where('status', 'converted')->count();
+            $lost         = CrmLead::where('tenant_id', $tenantId)->where('status', 'lost')->count();
+            $recentInt    = CrmInteraction::where('tenant_id', $tenantId)->with('createdBy')->latest('interacted_at')->take(10)->get();
+
+            // My follow-ups due today/overdue
+            $myFollowUps  = CrmFollowUp::where('tenant_id', $tenantId)
+                ->where('assigned_to', auth()->id())
+                ->where('status', 'pending')
+                ->orderBy('due_at')
+                ->take(10)
                 ->get();
-            $pipelineData[] = [
-                'stage'       => $stage,
-                'count'       => $leads->count(),
-                'total_value' => $leads->sum('estimated_value'),
-            ];
+
+            // ── Enhanced: Conversion Rate Funnel ──
+            $newLeads = CrmLead::where('tenant_id', $tenantId)->where('status', 'new')->count();
+            $contacted = CrmLead::where('tenant_id', $tenantId)
+                ->whereHas('interactions')
+                ->count();
+            $qualified = CrmLead::where('tenant_id', $tenantId)->where('status', 'in_progress')->count();
+            $conversionRate = $totalLeads > 0 ? round(($converted / $totalLeads) * 100, 1) : 0;
+
+            // ── Enhanced: Lead Source Breakdown ──
+            $leadSources = CrmLead::where('tenant_id', $tenantId)
+                ->whereNotNull('source')
+                ->select('source', \Illuminate\Support\Facades\DB::raw('count(*) as total'))
+                ->groupBy('source')
+                ->pluck('total', 'source');
+
+            // ── Enhanced: Revenue by Pipeline Stage ──
+            $revenueByStage = [];
+            foreach ($stages as $stage) {
+                $revenueByStage[] = [
+                    'name'  => $stage->name,
+                    'color' => $stage->color,
+                    'value' => CrmLead::where('tenant_id', $tenantId)
+                        ->where('stage_id', $stage->id)
+                        ->sum('estimated_value'),
+                ];
+            }
+
+            // ── Enhanced: Sales Cycle Length ──
+            $avgSalesCycle = CrmLead::where('tenant_id', $tenantId)
+                ->where('status', 'converted')
+                ->whereNotNull('closed_date')
+                ->selectRaw("AVG(closed_date - created_at::date) as avg_days")
+                ->value('avg_days');
+            $avgSalesCycle = $avgSalesCycle ? round($avgSalesCycle) : 0;
+
+            // ── Enhanced: CRM Activity Trend (last 30 days) ──
+            $activityTrend = CrmInteraction::where('tenant_id', $tenantId)
+                ->where('interacted_at', '>=', now()->subDays(30))
+                ->select(\Illuminate\Support\Facades\DB::raw("DATE(interacted_at) as date"), \Illuminate\Support\Facades\DB::raw("count(*) as total"))
+                ->groupBy(\Illuminate\Support\Facades\DB::raw("DATE(interacted_at)"))
+                ->orderBy('date')
+                ->get();
+
+            // ── Enhanced: Follow-up Completion Rate ──
+            $totalFollowUps = CrmFollowUp::where('tenant_id', $tenantId)->count();
+            $completedFollowUps = CrmFollowUp::where('tenant_id', $tenantId)->where('status', 'completed')->count();
+            $followUpRate = $totalFollowUps > 0 ? round(($completedFollowUps / $totalFollowUps) * 100, 1) : 0;
+
+        } catch (\Exception $e) {
+            $stages = collect();
+            $pipelineData = [];
+            $totalLeads = $activeLeads = $converted = $lost = 0;
+            $recentInt = collect();
+            $myFollowUps = collect();
+            $newLeads = $contacted = $qualified = $conversionRate = 0;
+            $leadSources = collect();
+            $revenueByStage = [];
+            $avgSalesCycle = 0;
+            $activityTrend = collect();
+            $totalFollowUps = $completedFollowUps = $followUpRate = 0;
         }
-
-        // Stats
-        $totalLeads   = CrmLead::where('tenant_id', $tenantId)->count();
-        $activeLeads  = CrmLead::where('tenant_id', $tenantId)->whereIn('status', ['new', 'in_progress'])->count();
-        $converted    = CrmLead::where('tenant_id', $tenantId)->where('status', 'converted')->count();
-        $recentInt    = CrmInteraction::where('tenant_id', $tenantId)->with('createdBy')->latest('interacted_at')->take(10)->get();
-
-        // My follow-ups due today/overdue
-        $myFollowUps  = CrmFollowUp::where('tenant_id', $tenantId)
-            ->where('assigned_to', auth()->id())
-            ->where('status', 'pending')
-            ->orderBy('due_at')
-            ->take(10)
-            ->get();
 
         return view('crm.dashboard', compact(
             'stages', 'pipelineData', 'totalLeads', 'activeLeads',
-            'converted', 'recentInt', 'myFollowUps'
+            'converted', 'lost', 'recentInt', 'myFollowUps',
+            'newLeads', 'contacted', 'qualified', 'conversionRate',
+            'leadSources', 'revenueByStage', 'avgSalesCycle',
+            'activityTrend', 'totalFollowUps', 'completedFollowUps', 'followUpRate'
         ));
     }
 

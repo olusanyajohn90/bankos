@@ -208,7 +208,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div class="card p-5">
             <h3 class="text-sm font-semibold text-bankos-text dark:text-bankos-dark-text mb-4">Teller Activity Today</h3>
-            <canvas id="tellerChart" height="280"></canvas>
+            <canvas id="tellerChart" height="220"></canvas>
         </div>
 
         <div class="card p-5">
@@ -267,6 +267,7 @@
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: true,
                 indexAxis: 'y',
                 plugins: { legend: { display: false } },
                 scales: { x: { beginAtZero: true } }

@@ -159,7 +159,7 @@
 
         <div class="card p-5">
             <h3 class="text-sm font-semibold text-bankos-text dark:text-bankos-dark-text mb-4">Customers by Branch</h3>
-            <canvas id="branchChart" height="280"></canvas>
+            <canvas id="branchChart" height="220"></canvas>
         </div>
     </div>
 
@@ -286,7 +286,7 @@
                     borderRadius: 6
                 }]
             },
-            options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+            options: { responsive: true, maintainAspectRatio: true, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
         });
     </script>
     @endpush

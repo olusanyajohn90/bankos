@@ -19,53 +19,77 @@ class CustomerDashboardController extends Controller
         $filterKycTier = $request->input('kyc_tier');
 
         try {
-            // ── Branches for filter dropdown ──
+            // -- Branches for filter dropdown --
             $branches = DB::table('branches')
                 ->where('tenant_id', $tenantId)
                 ->select('id', 'name')
                 ->orderBy('name')
                 ->get();
 
-            // ── KPI: Total Customers ──
+            // Helper: apply common customer filters
+            $applyFilters = function ($query, $table = 'customers') use ($filterGender, $filterBranch, $filterKycTier) {
+                $prefix = $table ? "$table." : '';
+                return $query
+                    ->when($filterGender, fn($q) => $q->where("{$prefix}gender", $filterGender))
+                    ->when($filterBranch, fn($q) => $q->where("{$prefix}branch_id", $filterBranch))
+                    ->when($filterKycTier, fn($q) => $q->where("{$prefix}kyc_tier", $filterKycTier));
+            };
+
+            // -- KPI: Total Customers --
             $totalCustomers = DB::table('customers')
                 ->where('tenant_id', $tenantId)
+                ->when($filterGender, fn($q) => $q->where('gender', $filterGender))
+                ->when($filterBranch, fn($q) => $q->where('branch_id', $filterBranch))
+                ->when($filterKycTier, fn($q) => $q->where('kyc_tier', $filterKycTier))
                 ->count();
 
-            // ── KPI: Monthly Growth ──
+            // -- KPI: Monthly Growth --
             $customersThisMonth = DB::table('customers')
                 ->where('tenant_id', $tenantId)
+                ->when($filterGender, fn($q) => $q->where('gender', $filterGender))
+                ->when($filterBranch, fn($q) => $q->where('branch_id', $filterBranch))
+                ->when($filterKycTier, fn($q) => $q->where('kyc_tier', $filterKycTier))
                 ->whereRaw("created_at >= ?", [Carbon::now()->startOfMonth()])
                 ->count();
             $customersLastMonth = DB::table('customers')
                 ->where('tenant_id', $tenantId)
+                ->when($filterGender, fn($q) => $q->where('gender', $filterGender))
+                ->when($filterBranch, fn($q) => $q->where('branch_id', $filterBranch))
+                ->when($filterKycTier, fn($q) => $q->where('kyc_tier', $filterKycTier))
                 ->whereRaw("created_at >= ?", [Carbon::now()->subMonth()->startOfMonth()])
                 ->whereRaw("created_at < ?", [Carbon::now()->startOfMonth()])
                 ->count();
             $monthlyGrowth = $customersLastMonth > 0
                 ? round((($customersThisMonth - $customersLastMonth) / $customersLastMonth) * 100, 1) : 0;
 
-            // ── KPI: Customers by Status ──
+            // -- KPI: Customers by Status --
             $customersByStatus = DB::table('customers')
                 ->select('status', DB::raw('COUNT(*) as count'))
                 ->where('tenant_id', $tenantId)
+                ->when($filterGender, fn($q) => $q->where('gender', $filterGender))
+                ->when($filterBranch, fn($q) => $q->where('branch_id', $filterBranch))
+                ->when($filterKycTier, fn($q) => $q->where('kyc_tier', $filterKycTier))
                 ->groupBy('status')
                 ->pluck('count', 'status');
 
-            // ── KPI: Active Customers ──
+            // -- KPI: Active Customers --
             $activeCustomers = $customersByStatus->get('active', 0);
             $inactiveCustomers = $customersByStatus->get('inactive', 0);
             $dormantCustomers = $customersByStatus->get('dormant', 0);
             $blacklistedCustomers = $customersByStatus->get('blacklisted', 0);
 
-            // ── CHART: Customers by Gender (pie) ──
+            // -- CHART: Customers by Gender (pie) --
             $customersByGender = DB::table('customers')
                 ->select('gender', DB::raw('COUNT(*) as count'))
                 ->where('tenant_id', $tenantId)
                 ->whereNotNull('gender')
+                ->when($filterGender, fn($q) => $q->where('gender', $filterGender))
+                ->when($filterBranch, fn($q) => $q->where('branch_id', $filterBranch))
+                ->when($filterKycTier, fn($q) => $q->where('kyc_tier', $filterKycTier))
                 ->groupBy('gender')
                 ->pluck('count', 'gender');
 
-            // ── CHART: Customers by Age Group (bar) ──
+            // -- CHART: Customers by Age Group (bar) --
             $customersByAge = DB::table('customers')
                 ->select(DB::raw("
                     CASE
@@ -80,6 +104,9 @@ class CustomerDashboardController extends Controller
                 "), DB::raw('COUNT(*) as count'))
                 ->where('tenant_id', $tenantId)
                 ->whereNotNull('date_of_birth')
+                ->when($filterGender, fn($q) => $q->where('gender', $filterGender))
+                ->when($filterBranch, fn($q) => $q->where('branch_id', $filterBranch))
+                ->when($filterKycTier, fn($q) => $q->where('kyc_tier', $filterKycTier))
                 ->groupBy('age_group')
                 ->pluck('count', 'age_group');
 
@@ -89,44 +116,56 @@ class CustomerDashboardController extends Controller
                 return [$group => $customersByAge->get($group, 0)];
             })->filter(fn($v) => $v > 0);
 
-            // ── CHART: Customers by KYC Tier ──
+            // -- CHART: Customers by KYC Tier --
             $customersByKyc = DB::table('customers')
                 ->select('kyc_tier', DB::raw('COUNT(*) as count'))
                 ->where('tenant_id', $tenantId)
                 ->whereNotNull('kyc_tier')
+                ->when($filterGender, fn($q) => $q->where('gender', $filterGender))
+                ->when($filterBranch, fn($q) => $q->where('branch_id', $filterBranch))
+                ->when($filterKycTier, fn($q) => $q->where('kyc_tier', $filterKycTier))
                 ->groupBy('kyc_tier')
                 ->pluck('count', 'kyc_tier');
 
-            // ── CHART: Customers by Branch (bar) ──
+            // -- CHART: Customers by Branch (bar) --
             $customersByBranch = DB::table('customers')
                 ->join('branches', 'customers.branch_id', '=', 'branches.id')
                 ->select('branches.name', DB::raw('COUNT(*) as count'))
                 ->where('customers.tenant_id', $tenantId)
+                ->when($filterGender, fn($q) => $q->where('customers.gender', $filterGender))
+                ->when($filterBranch, fn($q) => $q->where('customers.branch_id', $filterBranch))
+                ->when($filterKycTier, fn($q) => $q->where('customers.kyc_tier', $filterKycTier))
                 ->groupBy('branches.name')
                 ->orderByDesc('count')
                 ->limit(15)
                 ->pluck('count', 'name');
 
-            // ── CHART: New Customer Acquisition Trend (last 12 months) ──
+            // -- CHART: New Customer Acquisition Trend (last 12 months) --
             $acquisitionTrend = DB::table('customers')
                 ->select(
                     DB::raw("TO_CHAR(created_at, 'YYYY-MM') as month"),
                     DB::raw('COUNT(*) as count')
                 )
                 ->where('tenant_id', $tenantId)
+                ->when($filterGender, fn($q) => $q->where('gender', $filterGender))
+                ->when($filterBranch, fn($q) => $q->where('branch_id', $filterBranch))
+                ->when($filterKycTier, fn($q) => $q->where('kyc_tier', $filterKycTier))
                 ->whereRaw("created_at >= ?", [Carbon::now()->subMonths(12)->startOfMonth()])
                 ->groupBy(DB::raw("TO_CHAR(created_at, 'YYYY-MM')"))
                 ->orderBy('month')
                 ->pluck('count', 'month');
 
-            // ── KPI: Average Account Balance per Customer ──
-            $avgBalancePerCustomer = DB::table('accounts')
+            // -- KPI: Average Account Balance per Customer --
+            $avgBalanceQuery = DB::table('accounts')
                 ->join('customers', 'accounts.customer_id', '=', 'customers.id')
                 ->where('accounts.tenant_id', $tenantId)
                 ->where('accounts.status', 'active')
-                ->avg('accounts.available_balance') ?? 0;
+                ->when($filterGender, fn($q) => $q->where('customers.gender', $filterGender))
+                ->when($filterBranch, fn($q) => $q->where('customers.branch_id', $filterBranch))
+                ->when($filterKycTier, fn($q) => $q->where('customers.kyc_tier', $filterKycTier));
+            $avgBalancePerCustomer = $avgBalanceQuery->avg('accounts.available_balance') ?? 0;
 
-            // ── TABLE: Top 10 Customers by Total Balance ──
+            // -- TABLE: Top 10 Customers by Total Balance --
             $topCustomers = DB::table('customers')
                 ->join('accounts', 'customers.id', '=', 'accounts.customer_id')
                 ->select(
@@ -139,29 +178,41 @@ class CustomerDashboardController extends Controller
                 )
                 ->where('customers.tenant_id', $tenantId)
                 ->where('accounts.status', 'active')
+                ->when($filterGender, fn($q) => $q->where('customers.gender', $filterGender))
+                ->when($filterBranch, fn($q) => $q->where('customers.branch_id', $filterBranch))
+                ->when($filterKycTier, fn($q) => $q->where('customers.kyc_tier', $filterKycTier))
                 ->groupBy('customers.id', 'customers.first_name', 'customers.last_name', 'customers.customer_number', 'customers.status')
                 ->orderByDesc('total_balance')
                 ->limit(10)
                 ->get();
 
-            // ── KPI: Customer Type Distribution ──
+            // -- KPI: Customer Type Distribution --
             $customersByType = DB::table('customers')
                 ->select('type', DB::raw('COUNT(*) as count'))
                 ->where('tenant_id', $tenantId)
+                ->when($filterGender, fn($q) => $q->where('gender', $filterGender))
+                ->when($filterBranch, fn($q) => $q->where('branch_id', $filterBranch))
+                ->when($filterKycTier, fn($q) => $q->where('kyc_tier', $filterKycTier))
                 ->groupBy('type')
                 ->pluck('count', 'type');
 
-            // ── KPI: KYC Completion Rate ──
+            // -- KPI: KYC Completion Rate --
             $kycCompleted = DB::table('customers')
                 ->where('tenant_id', $tenantId)
                 ->whereIn('kyc_tier', ['level_2', 'level_3'])
+                ->when($filterGender, fn($q) => $q->where('gender', $filterGender))
+                ->when($filterBranch, fn($q) => $q->where('branch_id', $filterBranch))
+                ->when($filterKycTier, fn($q) => $q->where('kyc_tier', $filterKycTier))
                 ->count();
             $kycCompletionRate = $totalCustomers > 0
                 ? round(($kycCompleted / $totalCustomers) * 100, 1) : 0;
 
-            // ── KPI: New Customers Today ──
+            // -- KPI: New Customers Today --
             $newCustomersToday = DB::table('customers')
                 ->where('tenant_id', $tenantId)
+                ->when($filterGender, fn($q) => $q->where('gender', $filterGender))
+                ->when($filterBranch, fn($q) => $q->where('branch_id', $filterBranch))
+                ->when($filterKycTier, fn($q) => $q->where('kyc_tier', $filterKycTier))
                 ->whereRaw("created_at >= ?", [Carbon::today()])
                 ->count();
 

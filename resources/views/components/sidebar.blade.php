@@ -277,8 +277,11 @@
                     <span class="ml-auto text-xs bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 font-semibold px-1.5 py-0.5 rounded-full">{{ $openDisputes }}</span>
                     @endif
                 </a>
-                <a href="{{ route('compliance.dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('compliance.*') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                <a href="{{ route('compliance.dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('compliance.dashboard') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
                     <span>Regulatory Reports</span>
+                </a>
+                <a href="{{ route('compliance.enhanced-dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('compliance.enhanced-dashboard') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Compliance Dashboard</span>
                 </a>
                 <a href="{{ route('referral-rewards.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('referral-rewards.*') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
                     <span>Referral Rewards</span>
@@ -308,6 +311,18 @@
                 <p class="px-3 pt-2 pb-1 text-xs font-semibold text-bankos-muted/70 uppercase tracking-wider">People</p>
                 <a href="{{ route('hr.dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('hr.dashboard') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
                     <span>HR Dashboard</span>
+                </a>
+                <a href="{{ route('hr.payroll-dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('hr.payroll-dashboard') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Payroll Dashboard</span>
+                </a>
+                <a href="{{ route('hr.leave-dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('hr.leave-dashboard') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Leave Dashboard</span>
+                </a>
+                <a href="{{ route('hr.staff-dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('hr.staff-dashboard') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Staff Dashboard</span>
+                </a>
+                <a href="{{ route('hr.performance-dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('hr.performance-dashboard') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Performance Dashboard</span>
                 </a>
                 <a href="{{ route('hr.org.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('hr.org.*') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
                     <span>Org Structure</span>
@@ -385,7 +400,7 @@
         <div class="border-t border-bankos-border dark:border-bankos-dark-border my-1"></div>
 
         {{-- ── INTERNAL WORKSPACE ───────────────────────────────── --}}
-        <div x-data="{ open: {{ request()->routeIs('documents.*','comms.*','chat.*','notifications.*') ? 'true' : 'false' }} }">
+        <div x-data="{ open: {{ request()->routeIs('documents.*','comms.*','chat.*','notifications.*','workspace.*') ? 'true' : 'false' }} }">
             <button @click="open = !open" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg">
                 <span class="flex items-center gap-3">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
@@ -394,6 +409,9 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200" :class="open ? 'rotate-180' : ''"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </button>
             <div x-show="open" x-transition class="mt-1 space-y-0.5 ml-6 pl-3 border-l border-bankos-border dark:border-bankos-dark-border">
+                <a href="{{ route('workspace.dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('workspace.dashboard') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Workspace Dashboard</span>
+                </a>
                 <a href="{{ route('documents.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('documents.index') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
                     <span>Documents</span>
                 </a>
@@ -657,7 +675,7 @@
         <div class="border-t border-bankos-border dark:border-bankos-dark-border my-1"></div>
 
         {{-- ── ADMINISTRATION ───────────────────────────────────── --}}
-        <div x-data="{ open: {{ request()->routeIs('users.*','roles.*','branches.*','gl-accounts.*','savings-products.*','loan-products.*','investment-products.*','fee-rules.*','feature-flags.*','webhooks.*','ip-whitelist.*','two-factor.*','tenants.*','super-admin.*','subscriptions.*') ? 'true' : 'false' }} }">
+        <div x-data="{ open: {{ request()->routeIs('users.*','roles.*','branches.*','gl-accounts.*','savings-products.*','loan-products.*','investment-products.*','fee-rules.*','feature-flags.*','webhooks.*','ip-whitelist.*','two-factor.*','tenants.*','super-admin.*','subscriptions.*','admin.*') ? 'true' : 'false' }} }">
             <button @click="open = !open" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg">
                 <span class="flex items-center gap-3">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14M12 2v2M12 20v2M2 12h2M20 12h2"></path></svg>
@@ -666,6 +684,9 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-200" :class="open ? 'rotate-180' : ''"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </button>
             <div x-show="open" x-transition class="mt-1 space-y-0.5 ml-6 pl-3 border-l border-bankos-border dark:border-bankos-dark-border">
+                <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('admin.dashboard') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Admin Dashboard</span>
+                </a>
                 @can('users.view')
                 <a href="{{ route('users.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('users.*') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
                     <span>Users</span>

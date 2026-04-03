@@ -150,7 +150,7 @@
     {{-- ── Accounts by Branch ────────────────────────────────────── --}}
     <div class="card p-5 mb-6">
         <h3 class="text-sm font-semibold text-bankos-text dark:text-bankos-dark-text mb-4">Accounts by Branch</h3>
-        <canvas id="branchAccountChart" height="250"></canvas>
+        <canvas id="branchAccountChart" height="200"></canvas>
     </div>
 
     {{-- ── Top 10 Accounts Table ─────────────────────────────────── --}}
@@ -262,7 +262,7 @@
                     borderRadius: 6
                 }]
             },
-            options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+            options: { responsive: true, maintainAspectRatio: true, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
         });
     </script>
     @endpush
