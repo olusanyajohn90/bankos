@@ -114,3 +114,9 @@ Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
     Route::get('/loans',     [\App\Http\Controllers\Api\MobileController::class, 'loanSummary']);
     Route::post('/repay',    [\App\Http\Controllers\Api\MobileController::class, 'repay']);
 });
+
+// ── MOBILE BANKING DEVICE API ───────────────────────────────────────────────
+Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
+    Route::get('/devices',      [\App\Http\Controllers\Api\MobileBankingController::class, 'devices']);
+    Route::post('/devices',     [\App\Http\Controllers\Api\MobileBankingController::class, 'registerDevice']);
+});

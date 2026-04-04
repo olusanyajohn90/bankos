@@ -1260,6 +1260,107 @@ Route::middleware(['auth', 'tenant'])->group(function () {
 
     // ── ADMIN DASHBOARD ──────────────────────────────────────────────────────
     Route::get('/admin/dashboard', [\App\Http\Controllers\AdminDashboardController::class, 'index'])->name('admin.dashboard');
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // FINACLE GAP MODULES
+    // ══════════════════════════════════════════════════════════════════════════
+
+    // ── TREASURY LITE ───────────────────────────────────────────────────────
+    Route::prefix('treasury')->name('treasury.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\TreasuryController::class, 'dashboard'])->name('dashboard');
+        Route::get('/placements', [\App\Http\Controllers\TreasuryController::class, 'placements'])->name('placements');
+        Route::get('/placements/create', [\App\Http\Controllers\TreasuryController::class, 'createPlacement'])->name('placements.create');
+        Route::post('/placements', [\App\Http\Controllers\TreasuryController::class, 'storePlacement'])->name('placements.store');
+        Route::get('/placements/{id}', [\App\Http\Controllers\TreasuryController::class, 'showPlacement'])->name('placements.show');
+        Route::get('/fx-deals', [\App\Http\Controllers\TreasuryController::class, 'fxDeals'])->name('fx-deals');
+        Route::get('/fx-deals/create', [\App\Http\Controllers\TreasuryController::class, 'createFxDeal'])->name('fx-deals.create');
+        Route::post('/fx-deals', [\App\Http\Controllers\TreasuryController::class, 'storeFxDeal'])->name('fx-deals.store');
+        Route::get('/fx-deals/{id}', [\App\Http\Controllers\TreasuryController::class, 'showFxDeal'])->name('fx-deals.show');
+    });
+
+    // ── TRADE FINANCE LITE ──────────────────────────────────────────────────
+    Route::prefix('trade-finance')->name('trade-finance.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\TradeFinanceController::class, 'dashboard'])->name('dashboard');
+        Route::get('/instruments', [\App\Http\Controllers\TradeFinanceController::class, 'index'])->name('index');
+        Route::get('/instruments/create', [\App\Http\Controllers\TradeFinanceController::class, 'create'])->name('create');
+        Route::post('/instruments', [\App\Http\Controllers\TradeFinanceController::class, 'store'])->name('store');
+        Route::get('/instruments/{id}', [\App\Http\Controllers\TradeFinanceController::class, 'show'])->name('show');
+        Route::patch('/instruments/{id}/status', [\App\Http\Controllers\TradeFinanceController::class, 'updateStatus'])->name('update-status');
+    });
+
+    // ── CASH MANAGEMENT ─────────────────────────────────────────────────────
+    Route::prefix('cash-management')->name('cash-management.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\CashManagementController::class, 'dashboard'])->name('dashboard');
+        Route::get('/positions', [\App\Http\Controllers\CashManagementController::class, 'positions'])->name('positions');
+        Route::get('/positions/create', [\App\Http\Controllers\CashManagementController::class, 'createPosition'])->name('create');
+        Route::post('/positions', [\App\Http\Controllers\CashManagementController::class, 'storePosition'])->name('store');
+        Route::get('/forecast', [\App\Http\Controllers\CashManagementController::class, 'forecast'])->name('forecast');
+    });
+
+    // ── WEALTH MANAGEMENT LITE ──────────────────────────────────────────────
+    Route::prefix('wealth')->name('wealth.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\WealthController::class, 'dashboard'])->name('dashboard');
+        Route::get('/portfolios', [\App\Http\Controllers\WealthController::class, 'portfolios'])->name('portfolios');
+        Route::get('/portfolios/create', [\App\Http\Controllers\WealthController::class, 'createPortfolio'])->name('portfolios.create');
+        Route::post('/portfolios', [\App\Http\Controllers\WealthController::class, 'storePortfolio'])->name('portfolios.store');
+        Route::get('/portfolios/{id}', [\App\Http\Controllers\WealthController::class, 'showPortfolio'])->name('portfolios.show');
+        Route::get('/portfolios/{id}/add-holding', [\App\Http\Controllers\WealthController::class, 'addHolding'])->name('portfolios.add-holding');
+        Route::post('/portfolios/{id}/holdings', [\App\Http\Controllers\WealthController::class, 'storeHolding'])->name('portfolios.store-holding');
+        Route::get('/portfolios/{id}/performance', [\App\Http\Controllers\WealthController::class, 'performance'])->name('portfolios.performance');
+    });
+
+    // ── OPEN BANKING / API MARKETPLACE ──────────────────────────────────────
+    Route::prefix('open-banking')->name('open-banking.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\OpenBankingController::class, 'dashboard'])->name('dashboard');
+        Route::get('/clients', [\App\Http\Controllers\OpenBankingController::class, 'clients'])->name('clients');
+        Route::get('/clients/create', [\App\Http\Controllers\OpenBankingController::class, 'createClient'])->name('clients.create');
+        Route::post('/clients', [\App\Http\Controllers\OpenBankingController::class, 'storeClient'])->name('clients.store');
+        Route::get('/clients/{id}', [\App\Http\Controllers\OpenBankingController::class, 'showClient'])->name('clients.show');
+        Route::patch('/clients/{id}/toggle', [\App\Http\Controllers\OpenBankingController::class, 'toggleClient'])->name('clients.toggle');
+        Route::get('/documentation', [\App\Http\Controllers\OpenBankingController::class, 'documentation'])->name('documentation');
+    });
+
+    // ── ENHANCED RISK MANAGEMENT ────────────────────────────────────────────
+    Route::prefix('risk-management')->name('risk-management.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\RiskManagementController::class, 'dashboard'])->name('dashboard');
+        Route::get('/assessments', [\App\Http\Controllers\RiskManagementController::class, 'assessments'])->name('assessments');
+        Route::get('/assessments/create', [\App\Http\Controllers\RiskManagementController::class, 'createAssessment'])->name('assessments.create');
+        Route::post('/assessments', [\App\Http\Controllers\RiskManagementController::class, 'storeAssessment'])->name('assessments.store');
+        Route::get('/assessments/{id}', [\App\Http\Controllers\RiskManagementController::class, 'showAssessment'])->name('assessments.show');
+        Route::get('/limits', [\App\Http\Controllers\RiskManagementController::class, 'limits'])->name('limits');
+        Route::get('/limits/create', [\App\Http\Controllers\RiskManagementController::class, 'createLimit'])->name('limits.create');
+        Route::post('/limits', [\App\Http\Controllers\RiskManagementController::class, 'storeLimit'])->name('limits.store');
+        Route::patch('/limits/{id}', [\App\Http\Controllers\RiskManagementController::class, 'updateLimit'])->name('limits.update');
+        Route::get('/breach-alerts', [\App\Http\Controllers\RiskManagementController::class, 'breachAlerts'])->name('breach-alerts');
+    });
+
+    // ── ENHANCED REGULATORY REPORTING ───────────────────────────────────────
+    Route::prefix('regulatory')->name('regulatory.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\RegulatoryReportingController::class, 'dashboard'])->name('dashboard');
+        Route::get('/reports', [\App\Http\Controllers\RegulatoryReportingController::class, 'index'])->name('index');
+        Route::get('/reports/create', [\App\Http\Controllers\RegulatoryReportingController::class, 'create'])->name('create');
+        Route::post('/reports', [\App\Http\Controllers\RegulatoryReportingController::class, 'store'])->name('store');
+        Route::get('/reports/{id}', [\App\Http\Controllers\RegulatoryReportingController::class, 'show'])->name('show');
+        Route::patch('/reports/{id}/submit', [\App\Http\Controllers\RegulatoryReportingController::class, 'submit'])->name('submit');
+        Route::get('/generate/{type}', [\App\Http\Controllers\RegulatoryReportingController::class, 'generate'])->name('generate');
+    });
+
+    // ── ENHANCED BPM / PROCESS AUTOMATION ───────────────────────────────────
+    Route::prefix('bpm')->name('bpm.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\BpmController::class, 'dashboard'])->name('dashboard');
+        Route::get('/processes', [\App\Http\Controllers\BpmController::class, 'processes'])->name('processes');
+        Route::get('/processes/create', [\App\Http\Controllers\BpmController::class, 'createProcess'])->name('processes.create');
+        Route::post('/processes', [\App\Http\Controllers\BpmController::class, 'storeProcess'])->name('processes.store');
+        Route::get('/processes/{id}', [\App\Http\Controllers\BpmController::class, 'showProcess'])->name('processes.show');
+        Route::get('/processes/{processId}/instances', [\App\Http\Controllers\BpmController::class, 'instances'])->name('instances');
+        Route::get('/processes/{processId}/instances/create', [\App\Http\Controllers\BpmController::class, 'createInstance'])->name('instances.create');
+        Route::post('/processes/{processId}/instances', [\App\Http\Controllers\BpmController::class, 'storeInstance'])->name('instances.store');
+        Route::post('/instances/{instanceId}/advance', [\App\Http\Controllers\BpmController::class, 'advanceInstance'])->name('instances.advance');
+        Route::get('/instances/{instanceId}', [\App\Http\Controllers\BpmController::class, 'instanceDetail'])->name('instances.show');
+    });
+
+    // ── MOBILE BANKING ADMIN ────────────────────────────────────────────────
+    Route::get('/mobile/dashboard', [\App\Http\Controllers\Api\MobileBankingController::class, 'mobileDashboard'])->name('mobile.dashboard');
 });
 
 // ── SUPER ADMIN — Platform Control Tower ─────────────────────────────────────
