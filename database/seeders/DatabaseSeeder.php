@@ -161,5 +161,8 @@ class DatabaseSeeder extends Seeder
 
         // 24. Calendar (calendars, events, attendees, reminders)
         $this->call(CalendarSeeder::class);
+
+        // 25. Finacle gap modules (treasury, trade finance, wealth, API, risk, regulatory, BPM)
+        $this->call(FinacleModulesSeeder::class);
     }
 }
