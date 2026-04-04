@@ -316,7 +316,7 @@
         <div class="border-t border-bankos-border dark:border-bankos-dark-border my-1"></div>
 
         {{-- ── COMPLIANCE & RISK ────────────────────────────────── --}}
-        <div x-data="{ open: {{ request()->routeIs('aml.*','kyc-review.*','transaction-monitor.*','workflows.*','portal-disputes.*','compliance.*','referral-rewards.*','audit-log.*','risk-management.*','regulatory.*') ? 'true' : 'false' }} }">
+        <div x-data="{ open: {{ request()->routeIs('aml.*','kyc-review.*','transaction-monitor.*','workflows.*','portal-disputes.*','compliance.*','compliance-auto.*','referral-rewards.*','audit-log.*','risk-management.*','regulatory.*') ? 'true' : 'false' }} }">
             <button @click="open = !open" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg">
                 <span class="flex items-center gap-3">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
@@ -363,6 +363,25 @@
                 </a>
                 <a href="{{ route('compliance.enhanced-dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('compliance.enhanced-dashboard') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
                     <span>Compliance Dashboard</span>
+                </a>
+                <p class="px-3 pt-3 pb-1 text-xs font-semibold text-bankos-muted/70 uppercase tracking-wider">Compliance Automation</p>
+                <a href="{{ route('compliance-auto.dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('compliance-auto.dashboard') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Command Center</span>
+                </a>
+                <a href="{{ route('compliance-auto.frameworks') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('compliance-auto.frameworks*') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Frameworks</span>
+                </a>
+                <a href="{{ route('compliance-auto.controls') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('compliance-auto.controls*') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Controls</span>
+                </a>
+                <a href="{{ route('compliance-auto.monitors') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('compliance-auto.monitors') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Monitors</span>
+                </a>
+                <a href="{{ route('compliance-auto.audit-trail') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('compliance-auto.audit-trail') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Audit Trail</span>
+                </a>
+                <a href="{{ route('compliance-auto.trust-report') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('compliance-auto.trust-report*') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
+                    <span>Trust Report</span>
                 </a>
                 <a href="{{ route('referral-rewards.index') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm {{ request()->routeIs('referral-rewards.*') ? 'bg-bankos-light dark:bg-primary/20 text-bankos-primary font-medium' : 'text-bankos-text-sec dark:text-bankos-dark-text-sec hover:bg-gray-50 dark:hover:bg-bankos-dark-bg' }}">
                     <span>Referral Rewards</span>

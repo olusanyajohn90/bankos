@@ -786,6 +786,23 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::get('/nfiu-ctr/download', [RegulatoryReportController::class, 'nfiuCtrDownload'])->name('nfiu-ctr.download');
     });
 
+    // ── COMPLIANCE AUTOMATION ────────────────────────────────────────────────
+    Route::prefix('compliance-automation')->name('compliance-auto.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ComplianceAutomationController::class, 'dashboard'])->name('dashboard');
+        Route::get('/frameworks', [\App\Http\Controllers\ComplianceAutomationController::class, 'frameworks'])->name('frameworks');
+        Route::get('/frameworks/{id}', [\App\Http\Controllers\ComplianceAutomationController::class, 'showFramework'])->name('frameworks.show');
+        Route::get('/controls', [\App\Http\Controllers\ComplianceAutomationController::class, 'controls'])->name('controls');
+        Route::get('/controls/{id}', [\App\Http\Controllers\ComplianceAutomationController::class, 'showControl'])->name('controls.show');
+        Route::patch('/controls/{id}', [\App\Http\Controllers\ComplianceAutomationController::class, 'updateControl'])->name('controls.update');
+        Route::post('/controls/{id}/evidence', [\App\Http\Controllers\ComplianceAutomationController::class, 'uploadEvidence'])->name('controls.evidence');
+        Route::get('/monitors', [\App\Http\Controllers\ComplianceAutomationController::class, 'monitors'])->name('monitors');
+        Route::post('/run-checks', [\App\Http\Controllers\ComplianceAutomationController::class, 'runChecks'])->name('run-checks');
+        Route::get('/audit-trail', [\App\Http\Controllers\ComplianceAutomationController::class, 'auditTrail'])->name('audit-trail');
+        Route::get('/trust-report', [\App\Http\Controllers\ComplianceAutomationController::class, 'trustReport'])->name('trust-report');
+        Route::patch('/trust-report', [\App\Http\Controllers\ComplianceAutomationController::class, 'updateTrustReport'])->name('trust-report.update');
+        Route::get('/report', [\App\Http\Controllers\ComplianceAutomationController::class, 'generateReport'])->name('report');
+    });
+
     // ── CREDIT POLICY / RULE ENGINE ───────────────────────────────────────────
     Route::prefix('credit/policies')->name('credit.policies.')->group(function () {
         Route::get('/', [CreditPolicyController::class, 'index'])->name('index');
@@ -1412,6 +1429,9 @@ Route::post('api/nip/callback', [NipController::class, 'callback'])->name('nip.c
 
 // USSD endpoint (public — Africa's Talking POST callback)
 Route::post('ussd', [UssdController::class, 'handle'])->name('ussd.handle');
+
+// Public compliance trust report (no auth — secured by token)
+Route::get('/trust/{token}', [\App\Http\Controllers\ComplianceAutomationController::class, 'publicTrustReport'])->name('public-trust-report');
 
 // 2FA challenge routes are in routes/auth.php
 
