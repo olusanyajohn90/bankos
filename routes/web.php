@@ -801,6 +801,51 @@ Route::middleware(['auth', 'tenant'])->group(function () {
         Route::get('/trust-report', [\App\Http\Controllers\ComplianceAutomationController::class, 'trustReport'])->name('trust-report');
         Route::patch('/trust-report', [\App\Http\Controllers\ComplianceAutomationController::class, 'updateTrustReport'])->name('trust-report.update');
         Route::get('/report', [\App\Http\Controllers\ComplianceAutomationController::class, 'generateReport'])->name('report');
+
+        // ── PHASE 1: Risk Scoring, Screening, SAR/STR, Perpetual KYC ────────
+        Route::get('/risk-scoring', [\App\Http\Controllers\AdvancedComplianceController::class, 'riskScoring'])->name('risk-scoring');
+        Route::get('/risk-scoring/{customerId}', [\App\Http\Controllers\AdvancedComplianceController::class, 'customerRisk'])->name('customer-risk');
+        Route::post('/risk-scoring/{customerId}/recalculate', [\App\Http\Controllers\AdvancedComplianceController::class, 'recalculateRisk'])->name('recalculate-risk');
+        Route::post('/risk-scoring/batch', [\App\Http\Controllers\AdvancedComplianceController::class, 'batchRiskScoring'])->name('batch-risk');
+        Route::get('/screening', [\App\Http\Controllers\AdvancedComplianceController::class, 'screeningDashboard'])->name('screening');
+        Route::patch('/screening/{id}/review', [\App\Http\Controllers\AdvancedComplianceController::class, 'reviewScreening'])->name('screening.review');
+        Route::get('/sar', [\App\Http\Controllers\AdvancedComplianceController::class, 'sarReports'])->name('sar');
+        Route::post('/sar/{customerId}/create', [\App\Http\Controllers\AdvancedComplianceController::class, 'createSar'])->name('sar.create');
+        Route::get('/sar/{id}/show', [\App\Http\Controllers\AdvancedComplianceController::class, 'showSar'])->name('sar.show');
+        Route::post('/sar/{id}/approve', [\App\Http\Controllers\AdvancedComplianceController::class, 'approveSar'])->name('sar.approve');
+        Route::get('/kyc-monitoring', [\App\Http\Controllers\AdvancedComplianceController::class, 'kycMonitoring'])->name('kyc-monitoring');
+        Route::post('/kyc-monitoring/{id}/resolve', [\App\Http\Controllers\AdvancedComplianceController::class, 'resolveKycEvent'])->name('kyc-monitoring.resolve');
+
+        // ── PHASE 2: Behavioral, Network, Beneficial Ownership, Adverse Media ──
+        Route::get('/behavioral-analytics', [\App\Http\Controllers\AdvancedComplianceController::class, 'behavioralAnalytics'])->name('behavioral-analytics');
+        Route::get('/behavioral-analytics/{customerId}', [\App\Http\Controllers\AdvancedComplianceController::class, 'customerBehavior'])->name('customer-behavior');
+        Route::get('/network-analysis', [\App\Http\Controllers\AdvancedComplianceController::class, 'networkAnalysis'])->name('network-analysis');
+        Route::get('/network-analysis/{customerId}/json', [\App\Http\Controllers\AdvancedComplianceController::class, 'customerNetwork'])->name('customer-network');
+        Route::get('/beneficial-ownership', [\App\Http\Controllers\AdvancedComplianceController::class, 'beneficialOwnership'])->name('beneficial-ownership');
+        Route::post('/beneficial-ownership', [\App\Http\Controllers\AdvancedComplianceController::class, 'addBeneficialOwner'])->name('beneficial-ownership.store');
+        Route::get('/adverse-media', [\App\Http\Controllers\AdvancedComplianceController::class, 'adverseMedia'])->name('adverse-media');
+        Route::post('/adverse-media/{customerId}/screen', [\App\Http\Controllers\AdvancedComplianceController::class, 'screenAdverseMedia'])->name('adverse-media.screen');
+
+        // ── PHASE 3: Predictive Alerts, Reg Changes, Scenarios, Chatbot ──────
+        Route::get('/predictive-alerts', [\App\Http\Controllers\AdvancedComplianceController::class, 'predictiveAlerts'])->name('predictive-alerts');
+        Route::post('/predictive-alerts/{id}/acknowledge', [\App\Http\Controllers\AdvancedComplianceController::class, 'acknowledgeAlert'])->name('predictive-alerts.acknowledge');
+        Route::get('/regulatory-changes', [\App\Http\Controllers\AdvancedComplianceController::class, 'regulatoryChanges'])->name('regulatory-changes');
+        Route::post('/regulatory-changes', [\App\Http\Controllers\AdvancedComplianceController::class, 'addRegulatoryChange'])->name('regulatory-changes.store');
+        Route::get('/regulatory-changes/{id}', [\App\Http\Controllers\AdvancedComplianceController::class, 'showRegulatoryChange'])->name('regulatory-changes.show');
+        Route::get('/scenarios', [\App\Http\Controllers\AdvancedComplianceController::class, 'scenarios'])->name('scenarios');
+        Route::post('/scenarios', [\App\Http\Controllers\AdvancedComplianceController::class, 'createScenario'])->name('scenarios.store');
+        Route::post('/scenarios/{id}/run', [\App\Http\Controllers\AdvancedComplianceController::class, 'runScenario'])->name('scenarios.run');
+        Route::get('/compliance-chat', [\App\Http\Controllers\AdvancedComplianceController::class, 'complianceChat'])->name('compliance-chat');
+        Route::post('/compliance-chat/message', [\App\Http\Controllers\AdvancedComplianceController::class, 'chatMessage'])->name('compliance-chat.message');
+
+        // ── PHASE 4: Autonomous Agents, Cross-border, Simulations ────────────
+        Route::get('/agents', [\App\Http\Controllers\AdvancedComplianceController::class, 'autonomousAgents'])->name('agents');
+        Route::post('/agents/run', [\App\Http\Controllers\AdvancedComplianceController::class, 'runAgent'])->name('agents.run');
+        Route::get('/cross-border', [\App\Http\Controllers\AdvancedComplianceController::class, 'crossBorderRules'])->name('cross-border');
+        Route::post('/cross-border', [\App\Http\Controllers\AdvancedComplianceController::class, 'addCrossBorderRule'])->name('cross-border.store');
+        Route::get('/simulations', [\App\Http\Controllers\AdvancedComplianceController::class, 'simulations'])->name('simulations');
+        Route::post('/simulations', [\App\Http\Controllers\AdvancedComplianceController::class, 'createSimulation'])->name('simulations.store');
+        Route::post('/simulations/{id}/run', [\App\Http\Controllers\AdvancedComplianceController::class, 'runSimulation'])->name('simulations.run');
     });
 
     // ── CREDIT POLICY / RULE ENGINE ───────────────────────────────────────────
